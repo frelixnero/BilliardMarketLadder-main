@@ -440,13 +440,26 @@ function App({ authUser, supabaseClient, onLogout }) {
     setLastSaved(new Date().toLocaleTimeString());
   }, [season, s1players, s1matches, s2players, s2matches, supporters, sixBall, playoffs]);
 
+  const getAccessToken = async () => {
+    if (!supabaseClient) throw new Error("Supabase auth is not configured.");
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    const token = data?.session?.access_token;
+    if (!token) throw new Error("Please log in again.");
+    return token;
+  };
+
   const saveToCloud = async () => {
     setCloudBusy(true);
     setCloudStatus("");
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/sync-state", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify({
           season,
           settings: {
@@ -470,7 +483,12 @@ function App({ authUser, supabaseClient, onLogout }) {
     setCloudBusy(true);
     setCloudStatus("");
     try {
-      const response = await fetch("/api/load-state");
+      const token = await getAccessToken();
+      const response = await fetch("/api/load-state", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error || "Cloud load failed");
       if (!data.dashboard) {
