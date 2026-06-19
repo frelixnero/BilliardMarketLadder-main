@@ -86,6 +86,17 @@ const WEEK_COUNT   = 8;
 const SEASON_PRIZES  = { p1: 1000, p2: 500, p3: 250, mvp: 150 };
 const PLAYOFF_PRIZES = { p1: 600, p2: 300, p3: 100 };
 const SIX_PRIZES     = { p1: 200, p2: 100, p3: 50 };
+const PROPOSAL_METRICS = {
+  grossRevenue: 101750,
+  barCut: 8939,
+  totalPrizeCosts: 61675,
+  baseProfit: 31136,
+  supporterOperatorCut: {
+    low: 21375,
+    medium: 80156,
+    high: 202013,
+  },
+};
 const getSharePrice = (playerName, standings) => {
   const rank = standings.findIndex(s => s.name === playerName);
   if (rank < 0)  return 25;
@@ -610,6 +621,7 @@ function App({ authUser, supabaseClient, onLogout }) {
   }, [s1players, s2players, supporters, s2standings]);
   const TABS = [
     { id:"home",        icon:"🏠", label:"Home" },
+    { id:"pitch",       icon:"🧭", label:"Pitch MVP" },
     { id:"players",     icon:"👤", label:"Players" },
     { id:"matches",     icon:"🎱", label:"Matches" },
     { id:"standings",   icon:"🏆", label:"Standings" },
@@ -689,6 +701,7 @@ function App({ authUser, supabaseClient, onLogout }) {
       </div>
       <div style={{ padding:"20px", maxWidth:980, margin:"0 auto" }}>
         {tab==="home"        && <HomeView {...views} />}
+        {tab==="pitch"       && <PitchView />}
         {tab==="players"     && <PlayersView {...views} />}
         {tab==="matches"     && <MatchesView {...views} />}
         {tab==="standings"   && <StandingsView {...views} />}
@@ -821,6 +834,7 @@ function HomeView({ money, standings, s1standings, s2standings, season, setSeaso
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         {[
+          { tab:"pitch",       icon:"🧭", label:"Pitch MVP",         desc:"Client proposal numbers" },
           { tab:"players",     icon:"👤", label:"Add Players",        desc:"Register all 16 players" },
           { tab:"matches",     icon:"🎱", label:"Enter Matches",       desc:"Record weekly scores" },
           { tab:"shares",      icon:"💰", label:"Manage Shares",       desc:"Buy ins, hold, cash out" },
@@ -836,6 +850,86 @@ function HomeView({ money, standings, s1standings, s2standings, season, setSeaso
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+// ─── PITCH MVP ───────────────────────────────────────────────────────────────
+function PitchView() {
+  const [scenario, setScenario] = useState("medium");
+  const [equitySold, setEquitySold] = useState(25);
+
+  const supporterCut = PROPOSAL_METRICS.supporterOperatorCut[scenario] || 0;
+  const totalProfit = PROPOSAL_METRICS.baseProfit + supporterCut;
+  const investorPct = Math.max(0, Math.min(100, equitySold));
+  const operatorPct = 100 - investorPct;
+  const investorTake = Math.round(totalProfit * (investorPct / 100));
+  const operatorTake = totalProfit - investorTake;
+
+  const scenarioLabel = scenario === "low" ? "Low" : scenario === "high" ? "High" : "Medium";
+
+  return (
+    <div>
+      <PageTitle icon="🧭" title="Pitch MVP Snapshot" desc="Proposal model view for customer presentation (financial scenario mode)." />
+      <Tip color={C.blue}>This tab uses the client proposal numbers as a presentation model. Your live operating tabs still use dashboard-entered data.</Tip>
+
+      <Card title="Scenario Controls" icon="🎛️" borderColor={C.blue}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          <div>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:8 }}>Supporter activity scenario</div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {["low", "medium", "high"].map(s => (
+                <button key={s} onClick={() => setScenario(s)} style={{
+                  background: scenario===s ? C.red : C.card,
+                  border:`2px solid ${scenario===s ? C.red : C.cardBorder}`,
+                  color:C.white, borderRadius:8, padding:"6px 14px",
+                  cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700,
+                }}>{s.toUpperCase()}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:8 }}>Equity sold to investors</div>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              {[25, 50].map(v => (
+                <button key={v} onClick={() => setEquitySold(v)} style={{
+                  background: equitySold===v ? C.gold : C.card,
+                  border:`2px solid ${equitySold===v ? C.gold : C.cardBorder}`,
+                  color:equitySold===v ? "#111" : C.white,
+                  borderRadius:8, padding:"6px 14px",
+                  cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700,
+                }}>{v}%</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:16 }}>
+        <BigCard icon="💵" title="Base Profit (No Supporters)" value={$$(PROPOSAL_METRICS.baseProfit)} color={C.blue} />
+        <BigCard icon="📈" title={`${scenarioLabel} Supporter Cut (15%)`} value={$$(supporterCut)} color={C.purple} />
+        <BigCard icon="🏁" title="Total Profit" value={$$(totalProfit)} color={C.green} />
+      </div>
+
+      <Card title="Proposal Revenue Model" icon="🧾" borderColor={C.green}>
+        <MRow label="Gross revenue" value={$$(PROPOSAL_METRICS.grossRevenue)} color={C.green} />
+        <MRow label="– Bar cuts" value={`– ${$$(PROPOSAL_METRICS.barCut)}`} color={C.red} />
+        <MRow label="= Net before prizes" value={$$(PROPOSAL_METRICS.grossRevenue - PROPOSAL_METRICS.barCut)} />
+        <MRow label="– Total prize costs" value={`– ${$$(PROPOSAL_METRICS.totalPrizeCosts)}`} color={C.red} />
+        <MRow label="= Base operating profit" value={$$(PROPOSAL_METRICS.baseProfit)} color={C.blue} big />
+      </Card>
+
+      <Card title="Equity Split Outcome" icon="🤝" borderColor={C.gold}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          <div style={{ background:C.dimBg, border:`1px solid ${C.cardBorder}`, borderRadius:10, padding:14 }}>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:4 }}>Operator share ({operatorPct}%)</div>
+            <div style={{ fontSize:30, fontWeight:900, color:C.green }}>{$$(operatorTake)}</div>
+          </div>
+          <div style={{ background:C.dimBg, border:`1px solid ${C.cardBorder}`, borderRadius:10, padding:14 }}>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:4 }}>Investor share ({investorPct}%)</div>
+            <div style={{ fontSize:30, fontWeight:900, color:C.gold }}>{$$(investorTake)}</div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
