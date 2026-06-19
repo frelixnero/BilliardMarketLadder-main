@@ -802,7 +802,7 @@ function App({ authUser, supabaseClient, onLogout }) {
       </div>
       <div style={{ padding:"20px", maxWidth:980, margin:"0 auto" }}>
         {tab==="home"        && <HomeView {...views} />}
-        {tab==="pitch"       && <PitchView />}
+        {tab==="pitch"       && <PitchView teamEconomics={teamEconomics} />}
         {tab==="teams"       && <TeamsView {...views} />}
         {tab==="players"     && <PlayersView {...views} />}
         {tab==="matches"     && <MatchesView {...views} />}
@@ -956,16 +956,18 @@ function HomeView({ money, standings, s1standings, s2standings, season, setSeaso
   );
 }
 // ─── PITCH MVP ───────────────────────────────────────────────────────────────
-function PitchView() {
+function PitchView({ teamEconomics }) {
   const [scenario, setScenario] = useState("medium");
   const [equitySold, setEquitySold] = useState(25);
 
   const supporterCut = PROPOSAL_METRICS.supporterOperatorCut[scenario] || 0;
   const totalProfit = PROPOSAL_METRICS.baseProfit + supporterCut;
+  const combinedBaseProfit = PROPOSAL_METRICS.baseProfit + (teamEconomics?.net || 0);
+  const combinedTotalProfit = combinedBaseProfit + supporterCut;
   const investorPct = Math.max(0, Math.min(100, equitySold));
   const operatorPct = 100 - investorPct;
-  const investorTake = Math.round(totalProfit * (investorPct / 100));
-  const operatorTake = totalProfit - investorTake;
+  const investorTake = Math.round(combinedTotalProfit * (investorPct / 100));
+  const operatorTake = combinedTotalProfit - investorTake;
 
   const scenarioLabel = scenario === "low" ? "Low" : scenario === "high" ? "High" : "Medium";
 
@@ -1011,6 +1013,21 @@ function PitchView() {
         <BigCard icon="📈" title={`${scenarioLabel} Supporter Cut (15%)`} value={$$(supporterCut)} color={C.purple} />
         <BigCard icon="🏁" title="Total Profit" value={$$(totalProfit)} color={C.green} />
       </div>
+
+      <Card title="Grand Total (Individual + Team Model)" icon="🧮" borderColor={C.green}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          <div style={{ background:C.dimBg, border:`1px solid ${C.cardBorder}`, borderRadius:10, padding:14 }}>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:4 }}>Combined base profit</div>
+            <div style={{ fontSize:30, fontWeight:900, color:C.blue }}>{$$(combinedBaseProfit)}</div>
+            <div style={{ fontSize:11, color:C.gray, marginTop:4 }}>Individual base {$$(PROPOSAL_METRICS.baseProfit)} + Team net {$$(teamEconomics?.net || 0)}</div>
+          </div>
+          <div style={{ background:"#001a0a", border:`2px solid ${C.green}`, borderRadius:10, padding:14 }}>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:4 }}>Combined total profit ({scenarioLabel})</div>
+            <div style={{ fontSize:30, fontWeight:900, color:C.green }}>{$$(combinedTotalProfit)}</div>
+            <div style={{ fontSize:11, color:C.gray, marginTop:4 }}>Adds supporter cut of {$$(supporterCut)}</div>
+          </div>
+        </div>
+      </Card>
 
       <Card title="Proposal Revenue Model" icon="🧾" borderColor={C.green}>
         <MRow label="Gross revenue" value={$$(PROPOSAL_METRICS.grossRevenue)} color={C.green} />
