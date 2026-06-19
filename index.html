@@ -83,9 +83,17 @@ const C = {
 };
 const PLAYER_COUNT = 16;
 const WEEK_COUNT   = 8;
-const SEASON_PRIZES  = { p1: 1000, p2: 500, p3: 250, mvp: 150 };
-const PLAYOFF_PRIZES = { p1: 600, p2: 300, p3: 100 };
+// Season-specific prizes (S1 lower, S2 medium, S3 playoff tier)
+const S1_PRIZES  = { p1: 850,  p2: 450,  p3: 250,  p4: 100,  mvp: 75  };
+const S2_PRIZES  = { p1: 1200, p2: 1000, p3: 600,  p4: 200,  mvp: 125 };
+const S3_PRIZES  = { p1: 1700, p2: 1000, p3: 850,  p4: 500,  mvp: 400 };
+const PARTICIPATION_PRIZES = [900, 650, 450, 250, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50]; // Top 4 then $50 flat
+const SEASON_PRIZES  = S1_PRIZES; // legacy ref
+const PLAYOFF_PRIZES = S3_PRIZES; // S3 IS the playoff tier
 const SIX_PRIZES     = { p1: 200, p2: 100, p3: 50 };
+// Team pricing per person
+const DOUBLES_PRIZES = { p1: 750,  p2: 400,  p3: 200,  p4: 125 }; // × 2 for team total
+const TRIPLES_PRIZES = { p1: 1000, p2: 600,  p3: 300,  p4: 175 }; // × 3 for team total
 const TEAM_REG = {
   doubles: { perPerson: 325, team: 650 },
   triples: { perPerson: 325, team: 975 },
@@ -102,6 +110,11 @@ const TEAM_PRIZES_PER_PERSON = {
     3: { p1: 1300, p2: 850, p3: 600, p4: 350, p5plus: 75 },
   },
 };
+// Registration fees per season
+const S1_REG = 150;
+const S2_REG = 175;
+const S3_REG = 200;
+const WEEK_FEE = 25;
 const PROPOSAL_METRICS = {
   grossRevenue: 101750,
   barCut: 8939,
@@ -113,13 +126,23 @@ const PROPOSAL_METRICS = {
     high: 202013,
   },
 };
-const getSharePrice = (playerName, standings) => {
+const getSharePrice = (playerName, standings, players) => {
   const rank = standings.findIndex(s => s.name === playerName);
-  if (rank < 0)  return 25;
-  if (rank < 2)  return 75;
-  if (rank < 4)  return 50;
-  if (rank < 8)  return 35;
-  return 25;
+  let base = 25;
+  if (rank === 0) base = 75;
+  else if (rank === 1) base = 75;
+  else if (rank < 4)  base = 50;
+  else if (rank < 8)  base = 35;
+  // Optional exhibition bump: wins +$5, losses –$3, capped at ±$20
+  let bump = 0;
+  if (players) {
+    const p = players.find(x => x.name === playerName);
+    if (p) {
+      bump = ((p.exhibWins || 0) * 5) - ((p.exhibLosses || 0) * 3);
+      bump = Math.max(-20, Math.min(20, bump));
+    }
+  }
+  return Math.max(10, Math.min(150, base + bump));
 };
 const getPlayoffPayout = (playerName, playoffs) => {
   if (!playerName) return 0;
