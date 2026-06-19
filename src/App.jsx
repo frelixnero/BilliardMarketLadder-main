@@ -391,9 +391,21 @@ export function AuthShell() {
   const pwStrengthColor = { weak: C.red, ok: C.gold, strong: C.green }[pwStrength];
   const pwStrengthLabel = { weak: "Too short", ok: "Fair", strong: "Strong" }[pwStrength];
 
+  const heroBgStyle = {
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    fontFamily: "'Segoe UI',Arial,sans-serif",
+    backgroundImage: `linear-gradient(rgba(10,10,24,0.72) 0%, rgba(10,10,24,0.85) 100%), url('/hero-bg.png')`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundAttachment: "fixed",
+  };
+
   if (!ready) {
     return (
-      <div style={{ minHeight:"100vh", display:"grid", placeItems:"center", background:C.bg, fontFamily:"'Segoe UI',Arial,sans-serif" }}>
+      <div style={{ ...heroBgStyle }}>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12 }}>
           <div style={{ fontSize:32 }}>🎱</div>
           <div style={{ color:C.gray, fontSize:14 }}>Loading…</div>
@@ -404,7 +416,7 @@ export function AuthShell() {
 
   if (!user) {
     return (
-      <div style={{ minHeight:"100vh", display:"grid", placeItems:"center", background:C.bg, color:C.white, fontFamily:"'Segoe UI',Arial,sans-serif", padding:20 }}>
+      <div style={{ ...heroBgStyle, color:C.white, padding:20 }}>
         <div style={{ width:"100%", maxWidth:440 }}>
           <div style={{ textAlign:"center", marginBottom:28 }}>
             <div style={{ fontSize:44, marginBottom:8 }}>🎱</div>
@@ -417,7 +429,7 @@ export function AuthShell() {
             )}
           </div>
 
-          <form onSubmit={submitAuth} style={{ background:C.card, border:`1px solid ${C.cardBorder}`, borderRadius:16, overflow:"hidden" }}>
+          <form onSubmit={submitAuth} style={{ background:"rgba(22,22,42,0.82)", border:`1px solid rgba(42,42,69,0.9)`, borderRadius:16, overflow:"hidden", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", boxShadow:"0 8px 48px rgba(0,0,0,0.6)" }}>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", borderBottom:`1px solid ${C.cardBorder}` }}>
               {[ ["login","Log in"], ["signup","Create account"] ].map(([id, label]) => (
                 <button key={id} type="button" onClick={() => switchMode(id)} style={{
