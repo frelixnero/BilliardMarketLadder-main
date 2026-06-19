@@ -400,8 +400,15 @@ function AuthShell() {
   };
 
   const logout = async () => {
-    if (!supabaseClient) { setLocalAuthUser(null); setUser(null); return; }
-    await supabaseClient.auth.signOut();
+    if (supabaseClient) {
+      try {
+        await supabaseClient.auth.signOut();
+      } catch (e) {
+        console.error("Sign out error:", e);
+      }
+    }
+    setLocalAuthUser(null);
+    setUser(null);
   };
 
   const switchMode = (next) => { setMode(next); clearMsg(); setPassword(""); setConfirmPassword(""); };
@@ -521,7 +528,8 @@ function AuthShell() {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App({ authUser, supabaseClient, onLogout }) {
   const saved = loadState();
-  const accountRole = getStoredRole(authUser?.email) || "operator";
+  const [serverRole, setServerRole] = useState(null);
+  const accountRole = serverRole || getStoredRole(authUser?.email) || authUser?.app_metadata?.role || authUser?.user_metadata?.role || "player";
   const [tab, setTab]       = useState("home");
   const [roleMode, setRoleMode] = useState(saved?.roleMode ?? (accountRole === "operator" ? "operator" : "player"));
   const [season, setSeason] = useState(saved?.season ?? 1);
@@ -628,6 +636,9 @@ function App({ authUser, supabaseClient, onLogout }) {
       });
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error || "Cloud load failed");
+      if (data.role) {
+        setServerRole(data.role);
+      }
       if (!data.dashboard) {
         setCloudStatus("No cloud snapshot found.");
         return;
