@@ -67,8 +67,7 @@ const setStoredRole = (email, role) => {
 };
 const getSupabaseClient = () => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
-  if (!window.supabase || !window.supabase.createClient) return null;
-  return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 };
 // ─── COLORS ───────────────────────────────────────────────────────────────────
 const C = {
