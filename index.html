@@ -400,15 +400,13 @@ function AuthShell() {
   };
 
   const logout = async () => {
-    if (supabaseClient) {
-      try {
-        await supabaseClient.auth.signOut();
-      } catch (e) {
-        console.error("Sign out error:", e);
-      }
-    }
     setLocalAuthUser(null);
     setUser(null);
+    if (supabaseClient) {
+      supabaseClient.auth.signOut().catch(e => {
+        console.error("Sign out error:", e);
+      });
+    }
   };
 
   const switchMode = (next) => { setMode(next); clearMsg(); setPassword(""); setConfirmPassword(""); };
@@ -2998,7 +2996,7 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<AuthShell />);
 
 // ─── RULES VIEW ───────────────────────────────────────────────────────────────
 function RulesView() {
