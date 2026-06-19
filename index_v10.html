@@ -1,10 +1,32 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const BML_SUPABASE_URL = "https://vhsxjfzhwrxujpsvrutx.supabase.co";
-const BML_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc3hqZnpod3J4dWpwc3ZydXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NjQzOTEsImV4cCI6MjA5NzE0MDM5MX0.uTSkYFb_IkVIPO4uIZniOph5uEwqcizHfe4mvBbIXWw";
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BilliardsMarketLadder — Operator Dashboard</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0e0e1a; }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance:none; }
+  input[type=number] { -moz-appearance:textfield; }
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:#0e0e1a; }
+  ::-webkit-scrollbar-thumb { background:#2a2a45; border-radius:3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  window.BML_SUPABASE_URL = "https://vhsxjfzhwrxujpsvrutx.supabase.co";
+  window.BML_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc3hqZnpod3J4dWpwc3ZydXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NjQzOTEsImV4cCI6MjA5NzE0MDM5MX0.uTSkYFb_IkVIPO4uIZniOph5uEwqcizHfe4mvBbIXWw";
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useMemo, useEffect } = React;
 
 // ─── PERSISTENCE ──────────────────────────────────────────────────────────────
 const SAVE_KEY = "bml_dashboard_v10";
@@ -20,7 +42,8 @@ const loadState = () => {
 const AUTH_KEY = "bml_local_auth_v1";
 const USERS_KEY = "bml_local_users_v2";
 const ROLE_PREFS_KEY = "bml_role_prefs_v1";
-
+const SUPABASE_URL = window.BML_SUPABASE_URL || localStorage.getItem("BML_SUPABASE_URL") || "";
+const SUPABASE_ANON_KEY = window.BML_SUPABASE_ANON_KEY || localStorage.getItem("BML_SUPABASE_ANON_KEY") || "";
 
 const hashPassword = async (password) => {
   const enc = new TextEncoder();
@@ -65,8 +88,9 @@ const setStoredRole = (email, role) => {
   try { localStorage.setItem(ROLE_PREFS_KEY, JSON.stringify(next)); } catch (e) {}
 };
 const getSupabaseClient = () => {
-  if (!BML_SUPABASE_URL || !BML_SUPABASE_ANON_KEY) return null;
-  return createClient(BML_SUPABASE_URL, BML_SUPABASE_ANON_KEY);
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  if (!window.supabase || !window.supabase.createClient) return null;
+  return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 };
 // ─── COLORS ───────────────────────────────────────────────────────────────────
 const C = {
@@ -227,50 +251,6 @@ const calcStandings = (players, matches) => {
     .map(([name,s]) => ({ name, ...s, pts: s.w*2+s.t }))
     .sort((a,b) => b.pts-a.pts || b.w-a.w);
 };
-
-const isPlayerLocked = (player, season, matches) => {
-  if (!player || !player.name) return false;
-  const paidKey = season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid";
-  if (!player[paidKey]) return true;
-
-  const completedMatches = matches.filter(m => 
-    (m.a === player.name || m.b === player.name) && 
-    (m.aScore !== "" || m.bScore !== "")
-  );
-  const playedCount = completedMatches.length;
-
-  const weeksPaidKey = season === 1 ? "weeksPaid" : season === 2 ? "s2weeksPaid" : "s3weeksPaid";
-  const weeksPaid = parseInt(player[weeksPaidKey]) || 0;
-
-  return weeksPaid < playedCount - 1;
-};
-
-const getPlayerOwedAmount = (player, season, matches) => {
-  if (!player || !player.name) return 0;
-  let owed = 0;
-  
-  const paidKey = season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid";
-  if (!player[paidKey]) {
-    const regFee = season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG;
-    owed += regFee;
-  }
-
-  const completedMatches = matches.filter(m => 
-    (m.a === player.name || m.b === player.name) && 
-    (m.aScore !== "" || m.bScore !== "")
-  );
-  const playedCount = completedMatches.length;
-
-  const weeksPaidKey = season === 1 ? "weeksPaid" : season === 2 ? "s2weeksPaid" : "s3weeksPaid";
-  const weeksPaid = parseInt(player[weeksPaidKey]) || 0;
-
-  if (playedCount > weeksPaid) {
-    owed += (playedCount - weeksPaid) * WEEK_FEE;
-  }
-
-  return owed;
-};
-
 const getShareTierByPrice = (sharePrice) => {
   if (sharePrice >= 120) return "top2";
   if (sharePrice >= 90) return "top34";
@@ -278,7 +258,7 @@ const getShareTierByPrice = (sharePrice) => {
   return "unranked";
 };
 
-export function AuthShell() {
+function AuthShell() {
   const supabaseClient = useMemo(() => getSupabaseClient(), []);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
@@ -338,6 +318,7 @@ export function AuthShell() {
       setLocalUsers(migrated);
     }
     const localUser = { id: found.email, email: found.email, isLocal: true };
+    setStoredRole(found.email, selectedRole);
     setLocalAuthUser(localUser);
     setUser(localUser);
   };
@@ -351,22 +332,14 @@ export function AuthShell() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabaseClient.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              role: selectedRole === "operator" ? "player" : selectedRole,
-              requested_role: selectedRole,
-            },
-          },
-        });
+        const { error } = await supabaseClient.auth.signUp({ email: email.trim(), password });
         if (error) throw error;
         setStoredRole(email.trim(), selectedRole);
         setMsg("Account created! Check your inbox to verify your email.", false);
       } else {
         const { error } = await supabaseClient.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
+        setStoredRole(email.trim(), selectedRole);
       }
     } catch (err) {
       setMsg(err.message || "Authentication failed.", true);
@@ -376,13 +349,8 @@ export function AuthShell() {
   };
 
   const logout = async () => {
-    setLocalAuthUser(null);
-    setUser(null);
-    if (supabaseClient) {
-      supabaseClient.auth.signOut().catch(e => {
-        console.error("Sign out error:", e);
-      });
-    }
+    if (!supabaseClient) { setLocalAuthUser(null); setUser(null); return; }
+    await supabaseClient.auth.signOut();
   };
 
   const switchMode = (next) => { setMode(next); clearMsg(); setPassword(""); setConfirmPassword(""); };
@@ -436,7 +404,7 @@ export function AuthShell() {
                 <input value={email} onChange={e => setEmail(e.target.value)} type="email" required autoComplete="email" style={{ ...selStyle, padding:"10px 12px" }} placeholder="you@example.com" />
               </div>
 
-              {mode === "signup" && <div style={{ marginBottom:14 }}>
+              <div style={{ marginBottom:14 }}>
                 <label style={{ display:"block", fontSize:12, color:C.gray, marginBottom:6, fontWeight:600 }}>Dashboard role</label>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                   {[ ["operator", "Operator"], ["player", "Player"] ].map(([id, label]) => (
@@ -453,7 +421,7 @@ export function AuthShell() {
                     }}>{label}</button>
                   ))}
                 </div>
-              </div>}
+              </div>
 
               <div style={{ marginBottom: mode === "signup" ? 14 : 20 }}>
                 <label style={{ display:"block", fontSize:12, color:C.gray, marginBottom:6, fontWeight:600 }}>Password</label>
@@ -502,10 +470,8 @@ export function AuthShell() {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App({ authUser, supabaseClient, onLogout }) {
   const saved = loadState();
-  const [serverRole, setServerRole] = useState(null);
-  const accountRole = serverRole || getStoredRole(authUser?.email) || authUser?.app_metadata?.role || authUser?.user_metadata?.role || "player";
   const [tab, setTab]       = useState("home");
-  const [roleMode, setRoleMode] = useState(saved?.roleMode ?? (accountRole === "operator" ? "operator" : "player"));
+  const [roleMode, setRoleMode] = useState(saved?.roleMode ?? getStoredRole(authUser?.email) ?? "operator");
   const [season, setSeason] = useState(saved?.season ?? 1);
   const [s1players, setS1Players]   = useState(saved?.s1players   ?? defaultPlayers());
   const [s1matches, setS1Matches]   = useState(saved?.s1matches   ?? defaultMatches(0));
@@ -529,11 +495,10 @@ function App({ authUser, supabaseClient, onLogout }) {
     roleMode, season, s1players, s1matches, s2players, s2matches, s3players, s3matches,
     supporters, leagueNames, bars, playoffs, doublesTeams, triplesTeams,
   };
-  const effectiveRole = accountRole === "operator" ? roleMode : "player";
 
   const applySnapshot = (next) => {
     if (!next) return;
-    setRoleMode(accountRole === "operator" ? (next.roleMode ?? "operator") : "player");
+    setRoleMode(next.roleMode ?? "operator");
     setSeason(next.season ?? 1);
     setS1Players(next.s1players ?? defaultPlayers());
     setS1Matches(next.s1matches ?? defaultMatches(0));
@@ -556,8 +521,8 @@ function App({ authUser, supabaseClient, onLogout }) {
   }, [roleMode, season, s1players, s1matches, s2players, s2matches, s3players, s3matches, supporters, leagueNames, bars, playoffs, doublesTeams, triplesTeams]);
 
   useEffect(() => {
-    if (accountRole !== "operator" && roleMode !== "player") setRoleMode("player");
-  }, [accountRole, roleMode]);
+    if (authUser?.email) setStoredRole(authUser.email, roleMode);
+  }, [authUser, roleMode]);
 
   const getAccessToken = async () => {
     if (!supabaseClient) throw new Error("Supabase auth is not configured.");
@@ -610,9 +575,6 @@ function App({ authUser, supabaseClient, onLogout }) {
       });
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error || "Cloud load failed");
-      if (data.role) {
-        setServerRole(data.role);
-      }
       if (!data.dashboard) {
         setCloudStatus("No cloud snapshot found.");
         return;
@@ -837,13 +799,13 @@ function App({ authUser, supabaseClient, onLogout }) {
     { id:"participation", icon:"🎱", label:"Participation" },
     { id:"rules",       icon:"📖", label:"Rules" },
   ];
-  const TABS = effectiveRole === "player" ? playerTabs : operatorTabs;
+  const TABS = roleMode === "player" ? playerTabs : operatorTabs;
 
   useEffect(() => {
     if (!TABS.some(t => t.id === tab)) {
-      setTab(effectiveRole === "player" ? "playerboard" : "home");
+      setTab(roleMode === "player" ? "playerboard" : "home");
     }
-  }, [effectiveRole, tab]);
+  }, [roleMode, tab]);
   const views = {
     players, setPlayers, matches, setMatches,
     supporters, setSupporters,
@@ -855,7 +817,7 @@ function App({ authUser, supabaseClient, onLogout }) {
     setS1Players, setS2Players, setS3Players,
     startStripeCheckout, checkoutBusyId,
     startPlayerStripeCheckout, playerCheckoutBusyId,
-    roleMode: effectiveRole,
+    roleMode,
   };
   return (
     <div style={{ fontFamily:"'Segoe UI',Arial,sans-serif", background:C.bg, minHeight:"100vh", color:C.white }}>
@@ -866,26 +828,24 @@ function App({ authUser, supabaseClient, onLogout }) {
           <div style={{ fontSize:20, fontWeight:900, color:C.white, lineHeight:1 }}>BilliardsMarketLadder</div>
         </div>
         <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:16 }}>
-          {effectiveRole === "operator" && (
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:11, color:C.gray }}>Net profit</div>
-              <div style={{ fontSize:22, fontWeight:900, color:C.green }}>{$$(money.netProfit)}</div>
-            </div>
-          )}
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:11, color:C.gray }}>Net profit</div>
+            <div style={{ fontSize:22, fontWeight:900, color:C.green }}>{$$(money.netProfit)}</div>
+          </div>
           <div style={{ textAlign:"right" }}>
             {lastSaved && <div style={{ fontSize:10, color:C.green, marginBottom:2 }}>💾 Saved {lastSaved}</div>}
             <div style={{ fontSize:10, color:C.gray, marginBottom:4 }}>{authUser?.email}</div>
             <div style={{ display:"flex", gap:6, justifyContent:"flex-end", flexWrap:"wrap" }}>
-              {accountRole === "operator" && <button onClick={() => setRoleMode(roleMode === "operator" ? "player" : "operator")} style={{ background: roleMode === "operator" ? "#00162a" : "#001a10", border:`1px solid ${roleMode === "operator" ? C.blue : C.green}`, color: roleMode === "operator" ? C.blue : C.green, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>{roleMode === "operator" ? "Switch to Player" : "Switch to Operator"}</button>}
-              {effectiveRole === "operator" && <button onClick={loadFromCloud} disabled={cloudBusy || !supabaseClient} style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, opacity: !supabaseClient ? 0.5 : 1 }}>Load Cloud</button>}
-              {effectiveRole === "operator" && <button onClick={saveToCloud} disabled={cloudBusy || !supabaseClient} style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, opacity: !supabaseClient ? 0.5 : 1 }}>Save Cloud</button>}
+              <button onClick={() => setRoleMode(roleMode === "operator" ? "player" : "operator")} style={{ background: roleMode === "operator" ? "#00162a" : "#001a10", border:`1px solid ${roleMode === "operator" ? C.blue : C.green}`, color: roleMode === "operator" ? C.blue : C.green, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>{roleMode === "operator" ? "Switch to Player" : "Switch to Operator"}</button>
+              <button onClick={loadFromCloud} disabled={cloudBusy || !supabaseClient} style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, opacity: !supabaseClient ? 0.5 : 1 }}>Load Cloud</button>
+              <button onClick={saveToCloud} disabled={cloudBusy || !supabaseClient} style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, opacity: !supabaseClient ? 0.5 : 1 }}>Save Cloud</button>
               <button onClick={onLogout} style={{ background:"#2a2a45", border:`1px solid ${C.cardBorder}`, color:C.white, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>Logout</button>
-              {effectiveRole === "operator" && <button onClick={resetAll} style={{ background:"#2a0010", border:`1px solid ${C.red}`, color:C.red, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>Reset</button>}
+              <button onClick={resetAll} style={{ background:"#2a0010", border:`1px solid ${C.red}`, color:C.red, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>Reset</button>
             </div>
           </div>
         </div>
       </div>
-      {effectiveRole === "operator" && cloudStatus && (
+      {cloudStatus && (
         <div style={{ background:"#0a0a18", borderBottom:`1px solid ${C.cardBorder}`, padding:"6px 20px", fontSize:12, color:C.gold }}>
           {cloudStatus}
         </div>
@@ -893,18 +853,18 @@ function App({ authUser, supabaseClient, onLogout }) {
       <div style={{ background:"#0a0a18", borderBottom:`1px solid ${C.cardBorder}`, padding:"8px 20px", display:"flex", alignItems:"center", gap:10 }}>
         <span style={{ fontSize:12, color:C.gray, marginRight:4 }}>Active Season:</span>
         {[1,2,3].map(s => (
-          <button key={s} onClick={() => effectiveRole === "operator" && setSeason(s)} style={{
+          <button key={s} onClick={() => setSeason(s)} style={{
             background: season===s ? C.red : C.card,
             border:`2px solid ${season===s ? C.red : C.cardBorder}`,
             color:C.white, borderRadius:8, padding:"5px 18px",
-            cursor: effectiveRole === "operator" ? "pointer" : "default", opacity: effectiveRole === "operator" ? 1 : 0.85, fontFamily:"inherit", fontSize:13, fontWeight:700,
+            cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700,
           }}>Season {s}{s===3?' 🏆':''}</button>
         ))}
         <span style={{ fontSize:11, color:C.gray, marginLeft:8 }}>
           {season===1 ? "🟡 S1 — vol ×1.0 · lower prizes · S1 players get S2/S3 priority" : season===2 ? "🟢 S2 — vol ×1.5 · bigger prizes · S1 alumni get priority sign-up" : "🔴 S3 PLAYOFFS — vol ×2.5 · biggest prizes · top S1+S2 players compete"}
         </span>
-        <span style={{ marginLeft:"auto", fontSize:11, color: effectiveRole === "operator" ? C.blue : C.green, fontWeight:700 }}>
-          {effectiveRole === "operator" ? "Operator dashboard" : "Player dashboard"}
+        <span style={{ marginLeft:"auto", fontSize:11, color: roleMode === "operator" ? C.blue : C.green, fontWeight:700 }}>
+          {roleMode === "operator" ? "Operator dashboard" : "Player dashboard"}
         </span>
       </div>
       <div style={{ display:"flex", overflowX:"auto", background:C.dimBg, borderBottom:`1px solid ${C.cardBorder}` }}>
@@ -1880,7 +1840,7 @@ function InHouseView({ players, setPlayers, leagueNames, setLeagueNames, standin
     </div>
   );
 }
-function PlayersView({ players, setPlayers, season, bars, startPlayerStripeCheckout, playerCheckoutBusyId, matches = [] }) {
+function PlayersView({ players, setPlayers, season, bars, startPlayerStripeCheckout, playerCheckoutBusyId }) {
   const upd = (i,k,v) => setPlayers(ps=>ps.map((p,idx)=>idx===i?{...p,[k]:v}:p));
   const regFee = season===1?S1_REG:season===2?S2_REG:S3_REG;
   const weekKey = season===1?"weeksPaid":season===2?"s2weeksPaid":"s3weeksPaid";
@@ -1901,54 +1861,47 @@ function PlayersView({ players, setPlayers, season, bars, startPlayerStripeCheck
             <div key={h} style={{ fontSize:11, color:C.gray, fontWeight:700, textAlign:"center", whiteSpace:"pre-line", lineHeight:1.3 }}>{h}</div>
           ))}
         </div>
-        {players.map((p,i)=>{
-          const locked = isPlayerLocked(p, season, matches);
-          const owed = getPlayerOwedAmount(p, season, matches);
-          return (
-            <div key={p.id} style={{ display:"grid", gridTemplateColumns:"30px 1fr 90px 110px 90px 80px 80px 80px", gap:8, padding:"9px 14px", background:locked ? "#2a0010" : (i%2===0?C.card:C.dimBg), borderTop:`1px solid ${C.cardBorder}`, borderLeft:locked?`4px solid ${C.red}`:"none", alignItems:"center" }}>
-              <div style={{ fontSize:12, color:C.gray, textAlign:"center" }}>{i+1}</div>
-              <div>
-                <input value={p.name} onChange={e=>upd(i,"name",e.target.value)} placeholder={`Player ${i+1}`} style={{ ...textInp, borderColor: locked ? C.red : C.cardBorder }} />
-                {locked && <div style={{ fontSize:10, color:C.red, fontWeight:700, marginTop:2 }}>🔒 LOCKED (Owes ${owed})</div>}
-              </div>
-              <div style={{ display:"flex", justifyContent:"center" }}>
-                <CheckBox checked={p[paidKey]||false} onChange={v=>upd(i,paidKey,v)} label={p[paidKey]?"✓ Paid":"Unpaid"} color={C.green} />
-              </div>
-              <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:4 }}>
-                <button onClick={()=>upd(i,weekKey,Math.max(0,(parseInt(p[weekKey])||0)-1))} style={btnSm}>−</button>
-                <span style={{ minWidth:22, textAlign:"center", fontWeight:900, fontSize:16, color:C.gold }}>{p[weekKey]||0}</span>
-                <button onClick={()=>upd(i,weekKey,Math.min(8,(parseInt(p[weekKey])||0)+1))} style={btnSm}>+</button>
-              </div>
-              <div>
-                <select value={p.barId||""} onChange={e=>upd(i,"barId",e.target.value?parseInt(e.target.value):null)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
-                  <option value="">No bar</option>
-                  {bars.map(b=><option key={b.id} value={b.id}>{b.name||`Bar ${b.id}`}</option>)}
-                </select>
-              </div>
-              <div>
-                <select value={p.preferredGame||"straight8"} onChange={e=>upd(i,"preferredGame",e.target.value)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
-                  {Object.entries(GAME_LABELS).map(([k,v])=><option key={k} value={k}>{v.replace("8-Ball (BCA Rules)","BCA 8").replace("Straight 8-Ball","Str. 8").replace("-Ball","")}</option>)}
-                </select>
-              </div>
-              <div style={{ display:"flex", justifyContent:"center" }}>
-                <button
-                  onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "registration")}
-                  disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `registration-${p.id}`}
-                  style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
-                  {playerCheckoutBusyId === `registration-${p.id}` ? "Opening" : "Pay Reg"}
-                </button>
-              </div>
-              <div style={{ display:"flex", justifyContent:"center" }}>
-                <button
-                  onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "weekly_dues")}
-                  disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `weekly_dues-${p.id}`}
-                  style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
-                  {playerCheckoutBusyId === `weekly_dues-${p.id}` ? "Opening" : "Pay Week"}
-                </button>
-              </div>
+        {players.map((p,i)=>(
+          <div key={p.id} style={{ display:"grid", gridTemplateColumns:"30px 1fr 90px 110px 90px 80px 80px 80px", gap:8, padding:"9px 14px", background:i%2===0?C.card:C.dimBg, borderTop:`1px solid ${C.cardBorder}`, alignItems:"center" }}>
+            <div style={{ fontSize:12, color:C.gray, textAlign:"center" }}>{i+1}</div>
+            <input value={p.name} onChange={e=>upd(i,"name",e.target.value)} placeholder={`Player ${i+1}`} style={textInp} />
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <CheckBox checked={p[paidKey]||false} onChange={v=>upd(i,paidKey,v)} label={p[paidKey]?"✓ Paid":"Unpaid"} color={C.green} />
             </div>
-          );
-        })}
+            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:4 }}>
+              <button onClick={()=>upd(i,weekKey,Math.max(0,(parseInt(p[weekKey])||0)-1))} style={btnSm}>−</button>
+              <span style={{ minWidth:22, textAlign:"center", fontWeight:900, fontSize:16, color:C.gold }}>{p[weekKey]||0}</span>
+              <button onClick={()=>upd(i,weekKey,Math.min(8,(parseInt(p[weekKey])||0)+1))} style={btnSm}>+</button>
+            </div>
+            <div>
+              <select value={p.barId||""} onChange={e=>upd(i,"barId",e.target.value?parseInt(e.target.value):null)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
+                <option value="">No bar</option>
+                {bars.map(b=><option key={b.id} value={b.id}>{b.name||`Bar ${b.id}`}</option>)}
+              </select>
+            </div>
+            <div>
+              <select value={p.preferredGame||"straight8"} onChange={e=>upd(i,"preferredGame",e.target.value)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
+                {Object.entries(GAME_LABELS).map(([k,v])=><option key={k} value={k}>{v.replace("8-Ball (BCA Rules)","BCA 8").replace("Straight 8-Ball","Str. 8").replace("-Ball","")}</option>)}
+              </select>
+            </div>
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <button
+                onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "registration")}
+                disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `registration-${p.id}`}
+                style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
+                {playerCheckoutBusyId === `registration-${p.id}` ? "Opening" : "Pay Reg"}
+              </button>
+            </div>
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <button
+                onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "weekly_dues")}
+                disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `weekly_dues-${p.id}`}
+                style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
+                {playerCheckoutBusyId === `weekly_dues-${p.id}` ? "Opening" : "Pay Week"}
+              </button>
+            </div>
+          </div>
+        ))}
         <div style={{ background:"#0a1a0a", border:`2px solid ${C.green}`, padding:"12px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontSize:14, fontWeight:700 }}>S{season} total collected:</span>
           <span style={{ fontSize:22, fontWeight:900, color:C.green }}>{$$(totReg+totWeek)}</span>
@@ -1958,7 +1911,7 @@ function PlayersView({ players, setPlayers, season, bars, startPlayerStripeCheck
   );
 }
 // ─── MATCHES ─────────────────────────────────────────────────────────────────
-function MatchesView({ matches, setMatches, players, season, roleMode }) {
+function MatchesView({ matches, setMatches, players, season }) {
   const upd = (i,k,v) => setMatches(ms=>ms.map((m,idx)=>idx===i?{...m,[k]:v}:m));
   const names = players.map(p=>p.name).filter(Boolean);
   const weeks = [...new Set(matches.map(m=>m.week))];
@@ -1967,7 +1920,6 @@ function MatchesView({ matches, setMatches, players, season, roleMode }) {
     <div>
       <PageTitle icon="🎱" title={`Match Results — Season ${season}`} desc="Straight 8 · BCA 8 · 9-Ball · 10-Ball. Off-schedule matches count at ½ price impact." />
       <Tip>Game type affects stock volatility (10-ball = most volatile). Off-schedule matches move prices half as much as scheduled matches. S{season} vol ×{SEASON_VOL[season-1]}.</Tip>
-      {roleMode === "player" && <Tip color={C.blue}>Player mode is read-only here. You can view schedules and completed scores, but only operators can edit match data.</Tip>}
       <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" }}>
         {Object.entries(GAME_LABELS).map(([k,v])=>(<span key={k} style={{ background:C.card, border:`1px solid ${C.cardBorder}`, borderRadius:20, padding:"4px 12px", fontSize:11, color:C.gray }}>{v} ×{GAME_VOL[k]}</span>))}
         <span style={{ background:C.card, border:`1px solid ${C.orange}`, borderRadius:20, padding:"4px 12px", fontSize:11, color:C.orange }}>Off-Schedule ×{OFF_SCHEDULE_FACTOR} impact</span>
@@ -1986,68 +1938,41 @@ function MatchesView({ matches, setMatches, players, season, roleMode }) {
       {matches.filter(m=>m.week===openWeek).map((m,idx)=>{
         const mi = matches.findIndex(x=>x.id===m.id);
         const w = getWinner(m);
-        const playerALocked = m.a && isPlayerLocked(players.find(x => x.name === m.a), season, matches);
-        const playerBLocked = m.b && isPlayerLocked(players.find(x => x.name === m.b), season, matches);
-        const hasLockedPlayer = playerALocked || playerBLocked;
         return (
           <div key={m.id} style={{ background:C.card, border:`2px solid ${m.isOffSchedule?C.orange+"66":w?C.green+"66":C.cardBorder}`, borderRadius:12, padding:16, marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
               <span style={{ fontSize:11, color:C.gray, fontWeight:700 }}>S{season} MATCH {m.id} — WEEK {m.week} {m.isOffSchedule?"⚡ OFF-SCHEDULE":""}</span>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 {Object.entries(GAME_LABELS).map(([k,v])=>(
-                  <button key={k} onClick={()=>roleMode !== "player" && upd(mi,"gameType",k)} disabled={roleMode === "player"} style={{ background:m.gameType===k?C.blue+"33":"transparent", border:`1px solid ${m.gameType===k?C.blue:C.cardBorder}`, color:m.gameType===k?C.blue:C.gray, borderRadius:6, padding:"3px 8px", cursor:roleMode === "player" ? "default" : "pointer", opacity: roleMode === "player" ? 0.75 : 1, fontFamily:"inherit", fontSize:10, fontWeight:700 }}>{v.replace(" Rules","").replace("8-Ball","8-Ball")}</button>
+                  <button key={k} onClick={()=>upd(mi,"gameType",k)} style={{ background:m.gameType===k?C.blue+"33":"transparent", border:`1px solid ${m.gameType===k?C.blue:C.cardBorder}`, color:m.gameType===k?C.blue:C.gray, borderRadius:6, padding:"3px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700 }}>{v.replace(" Rules","").replace("8-Ball","8-Ball")}</button>
                 ))}
-                <button onClick={()=>roleMode !== "player" && upd(mi,"isOffSchedule",!m.isOffSchedule)} disabled={roleMode === "player"} style={{ background:m.isOffSchedule?C.orange+"33":"transparent", border:`1px solid ${m.isOffSchedule?C.orange:C.cardBorder}`, color:m.isOffSchedule?C.orange:C.gray, borderRadius:6, padding:"3px 8px", cursor:roleMode === "player" ? "default" : "pointer", opacity: roleMode === "player" ? 0.75 : 1, fontFamily:"inherit", fontSize:10, fontWeight:700 }}>{m.isOffSchedule?"⚡ Off-Sched":"📅 Scheduled"}</button>
+                <button onClick={()=>upd(mi,"isOffSchedule",!m.isOffSchedule)} style={{ background:m.isOffSchedule?C.orange+"33":"transparent", border:`1px solid ${m.isOffSchedule?C.orange:C.cardBorder}`, color:m.isOffSchedule?C.orange:C.gray, borderRadius:6, padding:"3px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700 }}>{m.isOffSchedule?"⚡ Off-Sched":"📅 Scheduled"}</button>
               </div>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 70px 70px 1fr", gap:10, alignItems:"end" }}>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Player A</div>
-                <select value={m.a} onChange={e=>upd(mi,"a",e.target.value)} style={selStyle} disabled={roleMode === "player"}>
+                <select value={m.a} onChange={e=>upd(mi,"a",e.target.value)} style={selStyle}>
                   <option value="">— pick player —</option>
-                  {names.map(n=>{
-                    const dbP = players.find(x => x.name === n);
-                    const locked = isPlayerLocked(dbP, season, matches);
-                    return (
-                      <option key={n} value={n}>
-                        {n}{locked ? " 🔒 LOCKED" : ""}
-                      </option>
-                    );
-                  })}
+                  {names.map(n=><option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5, textAlign:"center" }}>Score</div>
-                <input type="number" min={0} value={m.aScore} onChange={e=>upd(mi,"aScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} disabled={roleMode === "player"} />
+                <input type="number" min={0} value={m.aScore} onChange={e=>upd(mi,"aScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} />
               </div>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5, textAlign:"center" }}>Score</div>
-                <input type="number" min={0} value={m.bScore} onChange={e=>upd(mi,"bScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} disabled={roleMode === "player"} />
+                <input type="number" min={0} value={m.bScore} onChange={e=>upd(mi,"bScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} />
               </div>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Player B</div>
-                <select value={m.b} onChange={e=>upd(mi,"b",e.target.value)} style={selStyle} disabled={roleMode === "player"}>
+                <select value={m.b} onChange={e=>upd(mi,"b",e.target.value)} style={selStyle}>
                   <option value="">— pick player —</option>
-                  {names.map(n=>{
-                    const dbP = players.find(x => x.name === n);
-                    const locked = isPlayerLocked(dbP, season, matches);
-                    return (
-                      <option key={n} value={n}>
-                        {n}{locked ? " 🔒 LOCKED" : ""}
-                      </option>
-                    );
-                  })}
+                  {names.map(n=><option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
             </div>
-            {hasLockedPlayer && (
-              <div style={{ marginTop:12, background:"#2a0010", border:`1px solid ${C.red}`, borderRadius:8, padding:"10px 16px", display:"flex", alignItems:"center", gap:10 }}>
-                <span style={{ fontSize:18 }}>⚠️</span>
-                <span style={{ fontSize:13, fontWeight:800, color:C.red }}>
-                  Warning: Match includes a locked player due to unpaid dues.
-                </span>
-              </div>
-            )}
             {w && (
               <div style={{ marginTop:12, background:w==="Tie"?"#2a2a00":"#002a16", borderRadius:8, padding:"10px 16px", display:"flex", alignItems:"center", gap:10 }}>
                 <span style={{ fontSize:22 }}>{w==="Tie"?"🤝":"🏆"}</span>
@@ -2061,14 +1986,7 @@ function MatchesView({ matches, setMatches, players, season, roleMode }) {
   );
 }
 // ─── STANDINGS ────────────────────────────────────────────────────────────────
-function StandingsView({ standings, s1standings, s2standings, s3standings, season, supporters = [], players = [], matches = [] }) {
-  const seasonPrizes = season === 1 ? S1_PRIZES : season === 2 ? S2_PRIZES : S3_PRIZES;
-  const getBackersStr = (playerName) => {
-    const list = supporters.filter(s => s.player === playerName && (parseInt(s.shares) || 0) > 0 && !s.cashedS1 && !s.salvaged);
-    if (list.length === 0) return "No backers";
-    return list.map(s => `${s.name} (${s.shares})`).join(", ");
-  };
-
+function StandingsView({ standings, s1standings, s2standings, s3standings, season }) {
   return (
     <div>
       <PageTitle icon="🏆" title={`Standings — Season ${season}`} desc="Win = 2pts · Tie = 1pt · Loss = 0" />
@@ -2102,20 +2020,16 @@ function StandingsView({ standings, s1standings, s2standings, s3standings, seaso
                 <div style={{ fontSize:34 }}>{medal}</div>
                 {standings[i] ? (
                   <>
-                    <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i] }}>
-                      {standings[i].name}
-                      {isPlayerLocked(players.find(x => x.name === standings[i].name), season, matches) && <span style={{ color:C.red, fontSize:12, marginLeft:6 }}>🔒 LOCKED</span>}
-                    </div>
+                    <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i] }}>{standings[i].name}</div>
                     <div style={{ fontSize:13, color:C.gray }}>{standings[i].pts} pts · {standings[i].w}W</div>
-                    <div style={{ fontSize:15, color:C.green, fontWeight:700, marginTop:6 }}>S{season} prize: {$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i])}</div>
-                    <div style={{ fontSize:11, color:C.gray, marginTop:6, fontStyle:"italic" }}>Backers: {getBackersStr(standings[i].name)}</div>
+                    <div style={{ fontSize:15, color:C.green, fontWeight:700, marginTop:6 }}>S{season} prize: {$$([SEASON_PRIZES.p1,SEASON_PRIZES.p2,SEASON_PRIZES.p3][i])}</div>
                   </>
                 ) : <div style={{ color:C.gray, fontSize:14, marginTop:8 }}>TBD</div>}
               </div>
             ))}
           </div>
           <Card>
-            <div style={{ display:"grid", gridTemplateColumns:"40px 1.5fr 50px 50px 50px 70px 80px 80px", borderBottom:`2px solid ${C.cardBorder}`, paddingBottom:8, marginBottom:4 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 50px 50px 50px 70px 80px 80px", borderBottom:`2px solid ${C.cardBorder}`, paddingBottom:8, marginBottom:4 }}>
               {["#","Name","W","L","T","Pts","Prize","Share $"].map(h=>(
                 <div key={h} style={{ fontSize:11, color:C.gray, fontWeight:700, textAlign:"center" }}>{h}</div>
               ))}
@@ -2123,24 +2037,15 @@ function StandingsView({ standings, s1standings, s2standings, s3standings, seaso
             {standings.map((p,i)=>{
               const sharePrice = getSharePrice(p.name, standings);
               const pc = sharePrice===75?C.red:sharePrice===50?C.gold:sharePrice===35?C.blue:C.gray;
-              const dbPlayer = players.find(x => x.name === p.name);
-              const locked = isPlayerLocked(dbPlayer, season, matches);
-              const owed = getPlayerOwedAmount(dbPlayer, season, matches);
               return (
-                <div key={p.name} style={{ display:"grid", gridTemplateColumns:"40px 1.5fr 50px 50px 50px 70px 80px 80px", padding:"10px 0", borderBottom:`1px solid ${C.cardBorder}`, alignItems:"center", background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent" }}>
+                <div key={p.name} style={{ display:"grid", gridTemplateColumns:"40px 1fr 50px 50px 50px 70px 80px 80px", padding:"10px 0", borderBottom:`1px solid ${C.cardBorder}`, alignItems:"center", background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent" }}>
                   <div style={{ textAlign:"center", fontSize:15, fontWeight:900, color:i<3?[C.gold,"#ccc","#cd7f32"][i]:C.gray }}>#{i+1}</div>
-                  <div>
-                    <div style={{ fontSize:14, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>
-                      {p.name}
-                      {locked && <span style={{ color:C.red, fontSize:10, fontWeight:800, background:"#2a0010", border:`1px solid ${C.red}`, borderRadius:4, padding:"1px 4px" }}>🔒 LOCKED (Owes ${owed})</span>}
-                    </div>
-                    <div style={{ fontSize:11, color:C.gray }}>Backers: {getBackersStr(p.name)}</div>
-                  </div>
+                  <div style={{ fontSize:14, fontWeight:700 }}>{p.name}</div>
                   <div style={{ textAlign:"center", color:C.green, fontWeight:700 }}>{p.w}</div>
                   <div style={{ textAlign:"center", color:C.red, fontWeight:700 }}>{p.l}</div>
                   <div style={{ textAlign:"center", color:C.gray }}>{p.t}</div>
                   <div style={{ textAlign:"center", fontSize:15, fontWeight:900, color:C.red }}>{p.pts}</div>
-                  <div style={{ textAlign:"center", fontSize:13, color:C.gold, fontWeight:700 }}>{i<3?$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i]):"—"}</div>
+                  <div style={{ textAlign:"center", fontSize:13, color:C.gold, fontWeight:700 }}>{i<3?$$([1000,500,250][i]):"—"}</div>
                   <div style={{ textAlign:"center", fontSize:14, fontWeight:900, color:pc }}>${sharePrice}</div>
                 </div>
               );
@@ -2313,8 +2218,7 @@ function SharesView({ supporters, setSupporters, players, money, standings, play
             const pc         = mktPrice===200?C.red:mktPrice===150?"#ff6b35":mktPrice===100?C.gold:mktPrice===60?C.blue:C.gray;
             const playerTotal = playerTotals[s.player]||0;
             const playerAtCap = s.player && playerTotal >= SHARE_CAP_PER_PLAYER;
-            const maxShares  = s.selfBuy ? PLAYER_SELF_BUY_MAX : SUPPORTER_BUY_MAX;
-            const atPurchaseMax = shares >= maxShares;
+            const atPurchaseMax = shares >= SHARES_PER_PURCHASE_MAX;
             const canBuyMore = !s.cashedS1 && !s.lockedUntilMove && !playerAtCap && !atPurchaseMax;
             return (
               <div key={s.id} style={{ display:"grid", gridTemplateColumns:"24px 1fr 1fr 70px 80px 80px 90px 90px 90px", gap:4, padding:"8px 10px", background:s.cashedS1?"#0a1a0a":s.lockedUntilMove?"#1a0a00":i%2===0?C.card:C.dimBg, borderTop:`1px solid ${C.cardBorder}`, alignItems:"center", opacity:s.cashedS1?0.55:1 }}>
@@ -2344,16 +2248,16 @@ function SharesView({ supporters, setSupporters, players, money, standings, play
                     <span style={{ minWidth:20, textAlign:"center", fontWeight:900, color:atPurchaseMax?C.red:C.gold, fontSize:14 }}>{shares}</span>
                     <button onClick={()=>{
                       if(!s.cashedS1 && !s.lockedUntilMove && !playerAtCap) {
-                        const newShares = Math.min(maxShares,(parseInt(s.shares)||0)+1);
+                        const newShares = Math.min(SHARES_PER_PURCHASE_MAX,(parseInt(s.shares)||0)+1);
                         const base = s.selfBuy ? PLAYER_SELF_BUY_PRICE : getSharePrice(s.player, standings);
                         const p = s.salvageType==="discount" ? Math.max(5,base-SALVAGE_DISCOUNT) : base;
                         if(!s.shares||s.shares===0) updSupp(i,"pricePaid",p);
                         updSupp(i,"shares",newShares);
-                        if (newShares >= maxShares) updSupp(i,"lockedUntilMove",true);
+                        if (newShares >= SHARES_PER_PURCHASE_MAX) updSupp(i,"lockedUntilMove",true);
                       }
                     }} style={{ ...btnSm, width:20, height:20, fontSize:13, opacity:canBuyMore?1:0.3 }}>+</button>
                   </div>
-                  <div style={{ fontSize:9, color:atPurchaseMax?C.red:C.gray, textAlign:"center" }}>{shares}/{maxShares} max</div>
+                  <div style={{ fontSize:9, color:atPurchaseMax?C.red:C.gray, textAlign:"center" }}>{shares}/{SHARES_PER_PURCHASE_MAX} max</div>
                 </div>
                 <div style={{ textAlign:"center", fontSize:12, color:C.gray }}>{totalPaid>0?$$(totalPaid):"—"}</div>
                 <div style={{ textAlign:"center", fontSize:12, fontWeight:700, color:pc }}>{totalMkt>0?$$(totalMkt):"—"}</div>
@@ -2402,7 +2306,7 @@ function SharesView({ supporters, setSupporters, players, money, standings, play
   );
 }
 // ─── PLAYOFFS ────────────────────────────────────────────────────────────────
-function PlayoffsView({ standings, playoffs, setPlayoffs, roleMode }) {
+function PlayoffsView({ standings, playoffs, setPlayoffs }) {
   const upd = (i,k,v) => setPlayoffs(ps=>ps.map((p,idx)=>idx===i?{...p,[k]:v}:p));
   const seeds = standings.slice(0,8);
   const finalMatch = playoffs.find(m=>m.round.includes("Championship"));
@@ -2410,7 +2314,6 @@ function PlayoffsView({ standings, playoffs, setPlayoffs, roleMode }) {
   return (
     <div>
       <PageTitle icon="🥊" title="Playoffs — After Season 2" desc="Top 8 from Season 2 standings. Separate prize money. All shares cash out after this." />
-      {roleMode === "player" && <Tip color={C.blue}>Player mode is read-only here. You can view the bracket and results, but only operators can edit playoff matchups.</Tip>}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:20 }}>
         <BigCard icon="🏆" title="Playoff Champion" value={$$(PLAYOFF_PRIZES.p1)} color={C.gold} sub="on top of any season prizes" />
         <BigCard icon="🥈" title="Playoff Runner-Up" value={$$(PLAYOFF_PRIZES.p2)} color="#aaa" />
@@ -2468,19 +2371,19 @@ function PlayoffsView({ standings, playoffs, setPlayoffs, roleMode }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 60px 60px 1fr", gap:10, alignItems:"end" }}>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Player A</div>
-                <input value={m.a} onChange={e=>upd(i,"a",e.target.value)} placeholder="Name…" style={selStyle} disabled={roleMode === "player"} />
+                <input value={m.a} onChange={e=>upd(i,"a",e.target.value)} placeholder="Name…" style={selStyle} />
               </div>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5, textAlign:"center" }}>Score</div>
-                <input type="number" min={0} value={m.aScore} onChange={e=>upd(i,"aScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} disabled={roleMode === "player"} />
+                <input type="number" min={0} value={m.aScore} onChange={e=>upd(i,"aScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} />
               </div>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5, textAlign:"center" }}>Score</div>
-                <input type="number" min={0} value={m.bScore} onChange={e=>upd(i,"bScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} disabled={roleMode === "player"} />
+                <input type="number" min={0} value={m.bScore} onChange={e=>upd(i,"bScore",e.target.value)} style={{ ...selStyle, textAlign:"center", fontWeight:900, fontSize:22, color:C.gold }} />
               </div>
               <div>
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Player B</div>
-                <input value={m.b} onChange={e=>upd(i,"b",e.target.value)} placeholder="Name…" style={selStyle} disabled={roleMode === "player"} />
+                <input value={m.b} onChange={e=>upd(i,"b",e.target.value)} placeholder="Name…" style={selStyle} />
               </div>
             </div>
             {w && (
@@ -2748,28 +2651,13 @@ function PnLView({ s1players, s2players, s1standings, s2standings, supporters, p
   );
 }
 // ─── PLAYER BOARD ─────────────────────────────────────────────────────────────
-function PlayerBoardView({ standings, s1standings, s2standings, playoffs, supporters = [], season, startStripeCheckout, checkoutBusyId, players = [], matches = [], startPlayerStripeCheckout, playerCheckoutBusyId }) {
+function PlayerBoardView({ standings, s1standings, s2standings, playoffs, supporters, season, startStripeCheckout, checkoutBusyId }) {
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState("");
-  const [selectedYourName, setSelectedYourName] = useState("");
-
   const finalMatch = playoffs.find(m=>m.round.includes("Championship"));
   const champ = finalMatch ? getWinner(finalMatch) : null;
-  const marketPrice = selectedPlayer ? getSharePrice(selectedPlayer, standings, players) : 0;
-  
-  const seasonPrizes = season === 1 ? S1_PRIZES : season === 2 ? S2_PRIZES : S3_PRIZES;
-
-  const getBackersStr = (playerName) => {
-    const list = supporters.filter(s => s.player === playerName && (parseInt(s.shares) || 0) > 0 && !s.cashedS1 && !s.salvaged);
-    if (list.length === 0) return "No backers";
-    return list.map(s => `${s.name} (${s.shares})`).join(", ");
-  };
-
-  const yourPlayerObj = players.find(p => p.name === selectedYourName);
-  const isYourLocked = yourPlayerObj ? isPlayerLocked(yourPlayerObj, season, matches) : false;
-  const yourOwedAmount = yourPlayerObj ? getPlayerOwedAmount(yourPlayerObj, season, matches) : 0;
-
+  const marketPrice = selectedPlayer ? getSharePrice(selectedPlayer, standings) : 0;
   return (
     <div>
       <div style={{ background:"linear-gradient(135deg,#0a0a1a,#16162a)", border:`2px solid ${C.red}`, borderRadius:14, padding:"24px 20px", textAlign:"center", marginBottom:24 }}>
@@ -2780,64 +2668,6 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
           Currently: Season {season}
         </div>
       </div>
-
-      <div style={{ marginBottom:24 }}>
-        <Card title="My Account & Dues" borderColor={C.blue} icon="👤">
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            <div style={{ display:"flex", gap:12, alignItems:"end", flexWrap:"wrap" }}>
-              <div style={{ flex:1, minWidth:200 }}>
-                <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Select your player name to check dues:</div>
-                <select value={selectedYourName} onChange={e => setSelectedYourName(e.target.value)} style={selStyle}>
-                  <option value="">— select your name —</option>
-                  {players.filter(p => p.name).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-                </select>
-              </div>
-              {yourPlayerObj && (
-                <div style={{ display:"flex", gap:8 }}>
-                  <button
-                    onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(yourPlayerObj, "registration")}
-                    disabled={yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] || !startPlayerStripeCheckout || playerCheckoutBusyId === `registration-${yourPlayerObj.id}`}
-                    style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:8, padding:"10px 14px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:900, opacity: yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? 0.5 : 1 }}>
-                    {playerCheckoutBusyId === `registration-${yourPlayerObj.id}` ? "Opening" : yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? "Reg Paid ✓" : "Pay Reg"}
-                  </button>
-                  <button
-                    onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(yourPlayerObj, "weekly_dues")}
-                    disabled={yourOwedAmount <= (yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? 0 : (season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG)) || !startPlayerStripeCheckout || playerCheckoutBusyId === `weekly_dues-${yourPlayerObj.id}`}
-                    style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:8, padding:"10px 14px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:900, opacity: yourOwedAmount <= (yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? 0 : (season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG)) ? 0.5 : 1 }}>
-                    {playerCheckoutBusyId === `weekly_dues-${yourPlayerObj.id}` ? "Opening" : "Pay Week Dues ($25)"}
-                  </button>
-                </div>
-              )}
-            </div>
-            {yourPlayerObj ? (
-              <div style={{ background:isYourLocked ? "#2a0010" : "#002a16", border:`1px solid ${isYourLocked ? C.red : C.green}`, borderRadius:8, padding:"12px 16px", marginTop:6 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <div>
-                    <span style={{ fontSize:15, fontWeight:900 }}>{yourPlayerObj.name}</span>
-                    <span style={{ fontSize:11, color:C.gray, marginLeft:10 }}>
-                      Reg: {yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? "Paid" : "Unpaid"} · 
-                      Weeks Paid: {yourPlayerObj[season === 1 ? "weeksPaid" : season === 2 ? "s2weeksPaid" : "s3weeksPaid"]}
-                    </span>
-                  </div>
-                  <span style={{ fontSize:14, fontWeight:900, color:isYourLocked ? C.red : C.green }}>
-                    {isYourLocked ? `🔒 LOCKED (Owes $${yourOwedAmount})` : `✅ ACTIVE (Owes $${yourOwedAmount})`}
-                  </span>
-                </div>
-                {isYourLocked && (
-                  <div style={{ fontSize:11, color:C.red, marginTop:6, fontStyle:"italic" }}>
-                    ⚠️ Note: You must pay outstanding dues to be unlocked before your next match.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ fontSize:12, color:C.gray, textAlign:"center", fontStyle:"italic", padding:"10px 0" }}>
-                Select your name above to check if you owe dues and clear them via Stripe checkout.
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
-
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:13, color:C.gray, fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:10 }}>💰 Share Prices Right Now</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:10 }}>
@@ -2875,7 +2705,6 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
           <div style={{ marginTop:10, fontSize:12, color:C.gray }}>Stripe opens in test/production mode based on your configured backend. This player view does not expose operator profit data.</div>
         </Card>
       </div>
-
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:13, color:C.gray, fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:10 }}>🏆 Season {season} Standings</div>
         {standings.length===0 ? (
@@ -2886,16 +2715,12 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
               {[0,1,2].map(i=>standings[i]?(
                 <div key={i} style={{ background:C.card, border:`2px solid ${[C.gold,"#aaa","#cd7f32"][i]}`, borderRadius:12, padding:"16px 12px", textAlign:"center" }}>
                   <div style={{ fontSize:30 }}>{["🥇","🥈","🥉"][i]}</div>
-                  <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i], margin:"6px 0" }}>
-                    {standings[i].name}
-                    {isPlayerLocked(players.find(x => x.name === standings[i].name), season, matches) && <span style={{ color:C.red, fontSize:11, marginLeft:6 }}>🔒 LOCKED</span>}
-                  </div>
+                  <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i], margin:"6px 0" }}>{standings[i].name}</div>
                   <div style={{ fontSize:13, color:C.gray }}>{standings[i].pts} pts</div>
                   <div style={{ marginTop:8, fontSize:11, color:C.gray }}>Season prize</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:C.green }}>{$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i])}</div>
-                  <div style={{ fontSize:11, color:C.gray, marginTop:6, fontStyle:"italic" }}>Backers: {getBackersStr(standings[i].name)}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.green }}>{$$([SEASON_PRIZES.p1,SEASON_PRIZES.p2,SEASON_PRIZES.p3][i])}</div>
                   <div style={{ marginTop:6, fontWeight:900, color:[C.red,C.gold,C.blue][i]||C.gray, fontSize:14 }}>
-                    Shares: ${getSharePrice(standings[i].name,standings,players)}/each
+                    Shares: ${getSharePrice(standings[i].name,standings)}/each
                   </div>
                 </div>
               ):(
@@ -2903,31 +2728,22 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
               ))}
             </div>
             <div style={{ background:C.card, border:`1px solid ${C.cardBorder}`, borderRadius:10, overflow:"hidden" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"38px 1.5fr 40px 40px 50px 70px 80px", padding:"8px 14px", background:C.dimBg, borderBottom:`1px solid ${C.cardBorder}` }}>
+              <div style={{ display:"grid", gridTemplateColumns:"38px 1fr 40px 40px 50px 70px 80px", padding:"8px 14px", background:C.dimBg, borderBottom:`1px solid ${C.cardBorder}` }}>
                 {["#","Player","W","L","Pts","S Prize","Share $"].map(h=>(
                   <div key={h} style={{ fontSize:10, color:C.gray, fontWeight:700, textAlign:"center" }}>{h}</div>
                 ))}
               </div>
               {standings.map((p,i)=>{
-                const sp = getSharePrice(p.name,standings,players);
+                const sp = getSharePrice(p.name,standings);
                 const pc = sp===75?C.red:sp===50?C.gold:sp===35?C.blue:C.gray;
-                const dbPlayer = players.find(x => x.name === p.name);
-                const locked = isPlayerLocked(dbPlayer, season, matches);
-                const owed = getPlayerOwedAmount(dbPlayer, season, matches);
                 return (
-                  <div key={p.name} style={{ display:"grid", gridTemplateColumns:"38px 1.5fr 40px 40px 50px 70px 80px", padding:"10px 14px", borderBottom:`1px solid ${C.cardBorder}`, background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent", alignItems:"center" }}>
+                  <div key={p.name} style={{ display:"grid", gridTemplateColumns:"38px 1fr 40px 40px 50px 70px 80px", padding:"10px 14px", borderBottom:`1px solid ${C.cardBorder}`, background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent", alignItems:"center" }}>
                     <div style={{ textAlign:"center", fontWeight:900, fontSize:14, color:i<3?[C.gold,"#ccc","#cd7f32"][i]:C.gray }}>#{i+1}</div>
-                    <div>
-                      <div style={{ fontSize:14, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>
-                        {p.name}
-                        {locked && <span style={{ color:C.red, fontSize:10, fontWeight:800, background:"#2a0010", border:`1px solid ${C.red}`, borderRadius:4, padding:"1px 4px" }}>🔒 LOCKED (Owes ${owed})</span>}
-                      </div>
-                      <div style={{ fontSize:11, color:C.gray }}>Backers: {getBackersStr(p.name)}</div>
-                    </div>
+                    <div style={{ fontWeight:700, fontSize:14 }}>{p.name}</div>
                     <div style={{ textAlign:"center", color:C.green, fontWeight:700 }}>{p.w}</div>
                     <div style={{ textAlign:"center", color:C.red, fontWeight:700 }}>{p.l}</div>
                     <div style={{ textAlign:"center", fontWeight:900, color:C.red }}>{p.pts}</div>
-                    <div style={{ textAlign:"center", color:C.gold, fontWeight:700, fontSize:13 }}>{i<3?$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i]):"—"}</div>
+                    <div style={{ textAlign:"center", color:C.gold, fontWeight:700, fontSize:13 }}>{i<3?$$([1000,500,250][i]):"—"}</div>
                     <div style={{ textAlign:"center", fontWeight:900, color:pc, fontSize:15 }}>${sp}</div>
                   </div>
                 );
@@ -2972,7 +2788,7 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
   );
 }
 
-
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 
 // ─── RULES VIEW ───────────────────────────────────────────────────────────────
 function RulesView() {
@@ -3099,91 +2915,3 @@ function RulesView() {
 }
 
 // ─── BARS VIEW ─────────────────────────────────────────────────
-function BarsView({ bars, setBars, players, season }) {
-  const updBar = (i, k, v) => setBars(bs => bs.map((b, idx) => idx === i ? { ...b, [k]: v } : b));
-  const regFee = season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG;
-
-  return (
-    <div>
-      <PageTitle icon="🏪" title="Bar Tab Management" desc="Manage bar details, track host locations, and monitor bar-level share trade volumes and cuts." />
-      <Tip>Bar owners get a 10% cut of registration fees from players registered at their bar (BAR_REG_CUT = 10%) and 3% of share trading volume (BAR_SHARE_CUT = 3%).</Tip>
-      
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-        {bars.map((b, i) => {
-          const barPlayers = players.filter(p => p.barId === b.id);
-          const regCollected = barPlayers.length * regFee;
-          const barRegCut = Math.round(regCollected * BAR_REG_CUT);
-          
-          return (
-            <Card key={b.id} title={b.name || `Bar ${b.id}`} borderColor={C.blue} icon="🏪">
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: C.gray, marginBottom: 3 }}>BAR NAME</div>
-                  <input value={b.name || ""} onChange={e => updBar(i, "name", e.target.value)} placeholder="Enter bar name..." style={textInp} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: C.gray, marginBottom: 3 }}>OWNER NAME</div>
-                  <input value={b.ownerName || ""} onChange={e => updBar(i, "ownerName", e.target.value)} placeholder="Owner name..." style={textInp} />
-                </div>
-                <div style={{ borderTop: `1px solid ${C.cardBorder}`, marginTop: 8, paddingTop: 8, fontSize: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ color: C.gray }}>Registered Players:</span>
-                    <span style={{ fontWeight: 700 }}>{barPlayers.length}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ color: C.gray }}>Registration Vol:</span>
-                    <span style={{ color: C.green, fontWeight: 700 }}>{$$ (regCollected)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ color: C.gray }}>Bar Owner Reg Cut (10%):</span>
-                    <span style={{ color: C.gold, fontWeight: 700 }}>{$$ (barRegCut)}</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── MANUAL VIEW ───────────────────────────────────────────────
-function ManualView({ money, season, bars }) {
-  return (
-    <div>
-      <PageTitle icon="📗" title="Operator Manual & System Guide" desc="Overview of rules, parameters, financial splits, and manual operations for league operators." />
-      <Tip>This screen provides guidance on the financial structure and active league operations.</Tip>
-      
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Card title="💰 Financial Flows & Payout Splits" borderColor={C.gold} icon="💵">
-          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6 }}>
-            <p style={{ marginBottom: 8 }}>
-              <strong>Registration Fees:</strong> Player registration is collected at the start of each season. Bars receive a <strong>10%</strong> cut of the registration fees of all players registered at their bar.
-            </p>
-            <p style={{ marginBottom: 8 }}>
-              <strong>Weekly Dues:</strong> Players pay <strong>$25/week</strong>.
-            </p>
-            <p style={{ marginBottom: 8 }}>
-              <strong>Share Trading Fees:</strong> The operator takes a <strong>15%</strong> transaction fee on all supporter share purchases. Bars receive <strong>3%</strong> of share trading volume (or 2% depending on configuration).
-            </p>
-            <p style={{ marginBottom: 8 }}>
-              <strong>Net Profits:</strong> Remaining revenue after payouts is split equally among the 4 league partners.
-            </p>
-          </div>
-        </Card>
-        
-        <Card title="🔧 System Parameters & Settings" borderColor={C.blue} icon="⚙️">
-          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6 }}>
-            <p style={{ marginBottom: 4 }}><strong>S1 Registration Fee:</strong> $150</p>
-            <p style={{ marginBottom: 4 }}><strong>S2 Registration Fee:</strong> $175</p>
-            <p style={{ marginBottom: 4 }}><strong>S3 Registration Fee:</strong> $200</p>
-            <p style={{ marginBottom: 4 }}><strong>Weekly Dues Fee:</strong> $25/week</p>
-            <p style={{ marginBottom: 4 }}><strong>Share Price Floor:</strong> $10</p>
-            <p style={{ marginBottom: 4 }}><strong>Share Price Ceiling:</strong> $150</p>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-}

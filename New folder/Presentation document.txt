@@ -1,0 +1,9 @@
+How to present it:
+
+Open Pitch MVP tab
+Pick scenario (Low, Medium, High)
+Set equity sold (25% or 50%)
+Point to the new combined cards:
+Combined base profit
+Combined total profit
+Equity split outcome
