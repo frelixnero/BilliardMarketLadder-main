@@ -331,7 +331,16 @@ function AuthShell() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabaseClient.auth.signUp({ email: email.trim(), password });
+        const { error } = await supabaseClient.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              role: selectedRole === "operator" ? "player" : selectedRole,
+              requested_role: selectedRole,
+            },
+          },
+        });
         if (error) throw error;
         setStoredRole(email.trim(), selectedRole);
         setMsg("Account created! Check your inbox to verify your email.", false);

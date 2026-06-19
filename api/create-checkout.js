@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
   getRequestId,
   rateLimit,
+  requireOperatorUser,
   requireEnv,
 } from './_lib/security.js'
 
@@ -50,9 +51,11 @@ export default async function handler(req, res) {
   const finalBuyerEmail = buyerEmail || user.email || ''
 
   if (type === 'registration') {
+    if (!requireOperatorUser(user)) return errorResponse(res, 403, 'Only operators can create registration payments', requestId)
     priceId  = PRICE_IDS.registration
     metadata = { ...metadata, type: 'registration', playerId: playerId || '', playerName: playerName || '' }
   } else if (type === 'weekly_dues') {
+    if (!requireOperatorUser(user)) return errorResponse(res, 403, 'Only operators can create weekly dues payments', requestId)
     priceId  = PRICE_IDS.weekly_dues
     metadata = { ...metadata, type: 'weekly_dues', playerId: playerId || '', playerName: playerName || '' }
   } else if (type === 'share') {

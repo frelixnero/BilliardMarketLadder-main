@@ -5,6 +5,7 @@ import {
   getAuthenticatedUser,
   getRequestId,
   rateLimit,
+  requireOperatorUser,
   requireEnv,
 } from './_lib/security.js'
 
@@ -31,6 +32,7 @@ export default async function handler(req, res) {
 
   const { user, error: authError } = await getAuthenticatedUser(req, supabase)
   if (authError) return errorResponse(res, 401, authError, requestId)
+  if (!requireOperatorUser(user)) return errorResponse(res, 403, 'Only operators can load dashboard state', requestId)
 
   try {
     const { data, error } = await supabase

@@ -92,6 +92,32 @@ export async function getAuthenticatedUser(req, supabase) {
   return { user: data.user, error: null }
 }
 
+export function getConfiguredOperatorEmails() {
+  return new Set(
+    (process.env.OPERATOR_EMAILS || '')
+      .split(',')
+      .map(x => x.trim().toLowerCase())
+      .filter(Boolean)
+  )
+}
+
+export function getUserRole(user) {
+  const email = typeof user?.email === 'string' ? user.email.trim().toLowerCase() : ''
+  if (email && getConfiguredOperatorEmails().has(email)) return 'operator'
+
+  const appRole = typeof user?.app_metadata?.role === 'string' ? user.app_metadata.role.trim().toLowerCase() : ''
+  if (appRole === 'operator' || appRole === 'player') return appRole
+
+  const userRole = typeof user?.user_metadata?.role === 'string' ? user.user_metadata.role.trim().toLowerCase() : ''
+  if (userRole === 'operator' || userRole === 'player') return userRole
+
+  return 'player'
+}
+
+export function requireOperatorUser(user) {
+  return getUserRole(user) === 'operator'
+}
+
 export function requireEnv(vars) {
   const missing = vars.filter(name => !process.env[name])
   if (missing.length) {
