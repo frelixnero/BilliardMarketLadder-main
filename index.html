@@ -251,6 +251,50 @@ const calcStandings = (players, matches) => {
     .map(([name,s]) => ({ name, ...s, pts: s.w*2+s.t }))
     .sort((a,b) => b.pts-a.pts || b.w-a.w);
 };
+
+const isPlayerLocked = (player, season, matches) => {
+  if (!player || !player.name) return false;
+  const paidKey = season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid";
+  if (!player[paidKey]) return true;
+
+  const completedMatches = matches.filter(m => 
+    (m.a === player.name || m.b === player.name) && 
+    (m.aScore !== "" || m.bScore !== "")
+  );
+  const playedCount = completedMatches.length;
+
+  const weeksPaidKey = season === 1 ? "weeksPaid" : season === 2 ? "s2weeksPaid" : "s3weeksPaid";
+  const weeksPaid = parseInt(player[weeksPaidKey]) || 0;
+
+  return weeksPaid < playedCount - 1;
+};
+
+const getPlayerOwedAmount = (player, season, matches) => {
+  if (!player || !player.name) return 0;
+  let owed = 0;
+  
+  const paidKey = season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid";
+  if (!player[paidKey]) {
+    const regFee = season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG;
+    owed += regFee;
+  }
+
+  const completedMatches = matches.filter(m => 
+    (m.a === player.name || m.b === player.name) && 
+    (m.aScore !== "" || m.bScore !== "")
+  );
+  const playedCount = completedMatches.length;
+
+  const weeksPaidKey = season === 1 ? "weeksPaid" : season === 2 ? "s2weeksPaid" : "s3weeksPaid";
+  const weeksPaid = parseInt(player[weeksPaidKey]) || 0;
+
+  if (playedCount > weeksPaid) {
+    owed += (playedCount - weeksPaid) * WEEK_FEE;
+  }
+
+  return owed;
+};
+
 const getShareTierByPrice = (sharePrice) => {
   if (sharePrice >= 120) return "top2";
   if (sharePrice >= 90) return "top34";
@@ -1851,7 +1895,7 @@ function InHouseView({ players, setPlayers, leagueNames, setLeagueNames, standin
     </div>
   );
 }
-function PlayersView({ players, setPlayers, season, bars, startPlayerStripeCheckout, playerCheckoutBusyId }) {
+function PlayersView({ players, setPlayers, season, bars, startPlayerStripeCheckout, playerCheckoutBusyId, matches = [] }) {
   const upd = (i,k,v) => setPlayers(ps=>ps.map((p,idx)=>idx===i?{...p,[k]:v}:p));
   const regFee = season===1?S1_REG:season===2?S2_REG:S3_REG;
   const weekKey = season===1?"weeksPaid":season===2?"s2weeksPaid":"s3weeksPaid";
@@ -1872,47 +1916,54 @@ function PlayersView({ players, setPlayers, season, bars, startPlayerStripeCheck
             <div key={h} style={{ fontSize:11, color:C.gray, fontWeight:700, textAlign:"center", whiteSpace:"pre-line", lineHeight:1.3 }}>{h}</div>
           ))}
         </div>
-        {players.map((p,i)=>(
-          <div key={p.id} style={{ display:"grid", gridTemplateColumns:"30px 1fr 90px 110px 90px 80px 80px 80px", gap:8, padding:"9px 14px", background:i%2===0?C.card:C.dimBg, borderTop:`1px solid ${C.cardBorder}`, alignItems:"center" }}>
-            <div style={{ fontSize:12, color:C.gray, textAlign:"center" }}>{i+1}</div>
-            <input value={p.name} onChange={e=>upd(i,"name",e.target.value)} placeholder={`Player ${i+1}`} style={textInp} />
-            <div style={{ display:"flex", justifyContent:"center" }}>
-              <CheckBox checked={p[paidKey]||false} onChange={v=>upd(i,paidKey,v)} label={p[paidKey]?"✓ Paid":"Unpaid"} color={C.green} />
+        {players.map((p,i)=>{
+          const locked = isPlayerLocked(p, season, matches);
+          const owed = getPlayerOwedAmount(p, season, matches);
+          return (
+            <div key={p.id} style={{ display:"grid", gridTemplateColumns:"30px 1fr 90px 110px 90px 80px 80px 80px", gap:8, padding:"9px 14px", background:locked ? "#2a0010" : (i%2===0?C.card:C.dimBg), borderTop:`1px solid ${C.cardBorder}`, borderLeft:locked?`4px solid ${C.red}`:"none", alignItems:"center" }}>
+              <div style={{ fontSize:12, color:C.gray, textAlign:"center" }}>{i+1}</div>
+              <div>
+                <input value={p.name} onChange={e=>upd(i,"name",e.target.value)} placeholder={`Player ${i+1}`} style={{ ...textInp, borderColor: locked ? C.red : C.cardBorder }} />
+                {locked && <div style={{ fontSize:10, color:C.red, fontWeight:700, marginTop:2 }}>🔒 LOCKED (Owes ${owed})</div>}
+              </div>
+              <div style={{ display:"flex", justifyContent:"center" }}>
+                <CheckBox checked={p[paidKey]||false} onChange={v=>upd(i,paidKey,v)} label={p[paidKey]?"✓ Paid":"Unpaid"} color={C.green} />
+              </div>
+              <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:4 }}>
+                <button onClick={()=>upd(i,weekKey,Math.max(0,(parseInt(p[weekKey])||0)-1))} style={btnSm}>−</button>
+                <span style={{ minWidth:22, textAlign:"center", fontWeight:900, fontSize:16, color:C.gold }}>{p[weekKey]||0}</span>
+                <button onClick={()=>upd(i,weekKey,Math.min(8,(parseInt(p[weekKey])||0)+1))} style={btnSm}>+</button>
+              </div>
+              <div>
+                <select value={p.barId||""} onChange={e=>upd(i,"barId",e.target.value?parseInt(e.target.value):null)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
+                  <option value="">No bar</option>
+                  {bars.map(b=><option key={b.id} value={b.id}>{b.name||`Bar ${b.id}`}</option>)}
+                </select>
+              </div>
+              <div>
+                <select value={p.preferredGame||"straight8"} onChange={e=>upd(i,"preferredGame",e.target.value)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
+                  {Object.entries(GAME_LABELS).map(([k,v])=><option key={k} value={k}>{v.replace("8-Ball (BCA Rules)","BCA 8").replace("Straight 8-Ball","Str. 8").replace("-Ball","")}</option>)}
+                </select>
+              </div>
+              <div style={{ display:"flex", justifyContent:"center" }}>
+                <button
+                  onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "registration")}
+                  disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `registration-${p.id}`}
+                  style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
+                  {playerCheckoutBusyId === `registration-${p.id}` ? "Opening" : "Pay Reg"}
+                </button>
+              </div>
+              <div style={{ display:"flex", justifyContent:"center" }}>
+                <button
+                  onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "weekly_dues")}
+                  disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `weekly_dues-${p.id}`}
+                  style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
+                  {playerCheckoutBusyId === `weekly_dues-${p.id}` ? "Opening" : "Pay Week"}
+                </button>
+              </div>
             </div>
-            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:4 }}>
-              <button onClick={()=>upd(i,weekKey,Math.max(0,(parseInt(p[weekKey])||0)-1))} style={btnSm}>−</button>
-              <span style={{ minWidth:22, textAlign:"center", fontWeight:900, fontSize:16, color:C.gold }}>{p[weekKey]||0}</span>
-              <button onClick={()=>upd(i,weekKey,Math.min(8,(parseInt(p[weekKey])||0)+1))} style={btnSm}>+</button>
-            </div>
-            <div>
-              <select value={p.barId||""} onChange={e=>upd(i,"barId",e.target.value?parseInt(e.target.value):null)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
-                <option value="">No bar</option>
-                {bars.map(b=><option key={b.id} value={b.id}>{b.name||`Bar ${b.id}`}</option>)}
-              </select>
-            </div>
-            <div>
-              <select value={p.preferredGame||"straight8"} onChange={e=>upd(i,"preferredGame",e.target.value)} style={{ ...selStyle, fontSize:11, padding:"4px 6px" }}>
-                {Object.entries(GAME_LABELS).map(([k,v])=><option key={k} value={k}>{v.replace("8-Ball (BCA Rules)","BCA 8").replace("Straight 8-Ball","Str. 8").replace("-Ball","")}</option>)}
-              </select>
-            </div>
-            <div style={{ display:"flex", justifyContent:"center" }}>
-              <button
-                onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "registration")}
-                disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `registration-${p.id}`}
-                style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
-                {playerCheckoutBusyId === `registration-${p.id}` ? "Opening" : "Pay Reg"}
-              </button>
-            </div>
-            <div style={{ display:"flex", justifyContent:"center" }}>
-              <button
-                onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(p, "weekly_dues")}
-                disabled={!p.name || !startPlayerStripeCheckout || playerCheckoutBusyId === `weekly_dues-${p.id}`}
-                style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:6, padding:"6px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, opacity: !p.name ? 0.5 : 1 }}>
-                {playerCheckoutBusyId === `weekly_dues-${p.id}` ? "Opening" : "Pay Week"}
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         <div style={{ background:"#0a1a0a", border:`2px solid ${C.green}`, padding:"12px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontSize:14, fontWeight:700 }}>S{season} total collected:</span>
           <span style={{ fontSize:22, fontWeight:900, color:C.green }}>{$$(totReg+totWeek)}</span>
@@ -1950,6 +2001,9 @@ function MatchesView({ matches, setMatches, players, season, roleMode }) {
       {matches.filter(m=>m.week===openWeek).map((m,idx)=>{
         const mi = matches.findIndex(x=>x.id===m.id);
         const w = getWinner(m);
+        const playerALocked = m.a && isPlayerLocked(players.find(x => x.name === m.a), season, matches);
+        const playerBLocked = m.b && isPlayerLocked(players.find(x => x.name === m.b), season, matches);
+        const hasLockedPlayer = playerALocked || playerBLocked;
         return (
           <div key={m.id} style={{ background:C.card, border:`2px solid ${m.isOffSchedule?C.orange+"66":w?C.green+"66":C.cardBorder}`, borderRadius:12, padding:16, marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
@@ -1966,7 +2020,15 @@ function MatchesView({ matches, setMatches, players, season, roleMode }) {
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Player A</div>
                 <select value={m.a} onChange={e=>upd(mi,"a",e.target.value)} style={selStyle} disabled={roleMode === "player"}>
                   <option value="">— pick player —</option>
-                  {names.map(n=><option key={n} value={n}>{n}</option>)}
+                  {names.map(n=>{
+                    const dbP = players.find(x => x.name === n);
+                    const locked = isPlayerLocked(dbP, season, matches);
+                    return (
+                      <option key={n} value={n}>
+                        {n}{locked ? " 🔒 LOCKED" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div>
@@ -1981,10 +2043,26 @@ function MatchesView({ matches, setMatches, players, season, roleMode }) {
                 <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Player B</div>
                 <select value={m.b} onChange={e=>upd(mi,"b",e.target.value)} style={selStyle} disabled={roleMode === "player"}>
                   <option value="">— pick player —</option>
-                  {names.map(n=><option key={n} value={n}>{n}</option>)}
+                  {names.map(n=>{
+                    const dbP = players.find(x => x.name === n);
+                    const locked = isPlayerLocked(dbP, season, matches);
+                    return (
+                      <option key={n} value={n}>
+                        {n}{locked ? " 🔒 LOCKED" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
+            {hasLockedPlayer && (
+              <div style={{ marginTop:12, background:"#2a0010", border:`1px solid ${C.red}`, borderRadius:8, padding:"10px 16px", display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:18 }}>⚠️</span>
+                <span style={{ fontSize:13, fontWeight:800, color:C.red }}>
+                  Warning: Match includes a locked player due to unpaid dues.
+                </span>
+              </div>
+            )}
             {w && (
               <div style={{ marginTop:12, background:w==="Tie"?"#2a2a00":"#002a16", borderRadius:8, padding:"10px 16px", display:"flex", alignItems:"center", gap:10 }}>
                 <span style={{ fontSize:22 }}>{w==="Tie"?"🤝":"🏆"}</span>
@@ -1998,7 +2076,14 @@ function MatchesView({ matches, setMatches, players, season, roleMode }) {
   );
 }
 // ─── STANDINGS ────────────────────────────────────────────────────────────────
-function StandingsView({ standings, s1standings, s2standings, s3standings, season }) {
+function StandingsView({ standings, s1standings, s2standings, s3standings, season, supporters = [], players = [], matches = [] }) {
+  const seasonPrizes = season === 1 ? S1_PRIZES : season === 2 ? S2_PRIZES : S3_PRIZES;
+  const getBackersStr = (playerName) => {
+    const list = supporters.filter(s => s.player === playerName && (parseInt(s.shares) || 0) > 0 && !s.cashedS1 && !s.salvaged);
+    if (list.length === 0) return "No backers";
+    return list.map(s => `${s.name} (${s.shares})`).join(", ");
+  };
+
   return (
     <div>
       <PageTitle icon="🏆" title={`Standings — Season ${season}`} desc="Win = 2pts · Tie = 1pt · Loss = 0" />
@@ -2032,16 +2117,20 @@ function StandingsView({ standings, s1standings, s2standings, s3standings, seaso
                 <div style={{ fontSize:34 }}>{medal}</div>
                 {standings[i] ? (
                   <>
-                    <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i] }}>{standings[i].name}</div>
+                    <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i] }}>
+                      {standings[i].name}
+                      {isPlayerLocked(players.find(x => x.name === standings[i].name), season, matches) && <span style={{ color:C.red, fontSize:12, marginLeft:6 }}>🔒 LOCKED</span>}
+                    </div>
                     <div style={{ fontSize:13, color:C.gray }}>{standings[i].pts} pts · {standings[i].w}W</div>
-                    <div style={{ fontSize:15, color:C.green, fontWeight:700, marginTop:6 }}>S{season} prize: {$$([SEASON_PRIZES.p1,SEASON_PRIZES.p2,SEASON_PRIZES.p3][i])}</div>
+                    <div style={{ fontSize:15, color:C.green, fontWeight:700, marginTop:6 }}>S{season} prize: {$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i])}</div>
+                    <div style={{ fontSize:11, color:C.gray, marginTop:6, fontStyle:"italic" }}>Backers: {getBackersStr(standings[i].name)}</div>
                   </>
                 ) : <div style={{ color:C.gray, fontSize:14, marginTop:8 }}>TBD</div>}
               </div>
             ))}
           </div>
           <Card>
-            <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 50px 50px 50px 70px 80px 80px", borderBottom:`2px solid ${C.cardBorder}`, paddingBottom:8, marginBottom:4 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"40px 1.5fr 50px 50px 50px 70px 80px 80px", borderBottom:`2px solid ${C.cardBorder}`, paddingBottom:8, marginBottom:4 }}>
               {["#","Name","W","L","T","Pts","Prize","Share $"].map(h=>(
                 <div key={h} style={{ fontSize:11, color:C.gray, fontWeight:700, textAlign:"center" }}>{h}</div>
               ))}
@@ -2049,15 +2138,24 @@ function StandingsView({ standings, s1standings, s2standings, s3standings, seaso
             {standings.map((p,i)=>{
               const sharePrice = getSharePrice(p.name, standings);
               const pc = sharePrice===75?C.red:sharePrice===50?C.gold:sharePrice===35?C.blue:C.gray;
+              const dbPlayer = players.find(x => x.name === p.name);
+              const locked = isPlayerLocked(dbPlayer, season, matches);
+              const owed = getPlayerOwedAmount(dbPlayer, season, matches);
               return (
-                <div key={p.name} style={{ display:"grid", gridTemplateColumns:"40px 1fr 50px 50px 50px 70px 80px 80px", padding:"10px 0", borderBottom:`1px solid ${C.cardBorder}`, alignItems:"center", background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent" }}>
+                <div key={p.name} style={{ display:"grid", gridTemplateColumns:"40px 1.5fr 50px 50px 50px 70px 80px 80px", padding:"10px 0", borderBottom:`1px solid ${C.cardBorder}`, alignItems:"center", background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent" }}>
                   <div style={{ textAlign:"center", fontSize:15, fontWeight:900, color:i<3?[C.gold,"#ccc","#cd7f32"][i]:C.gray }}>#{i+1}</div>
-                  <div style={{ fontSize:14, fontWeight:700 }}>{p.name}</div>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>
+                      {p.name}
+                      {locked && <span style={{ color:C.red, fontSize:10, fontWeight:800, background:"#2a0010", border:`1px solid ${C.red}`, borderRadius:4, padding:"1px 4px" }}>🔒 LOCKED (Owes ${owed})</span>}
+                    </div>
+                    <div style={{ fontSize:11, color:C.gray }}>Backers: {getBackersStr(p.name)}</div>
+                  </div>
                   <div style={{ textAlign:"center", color:C.green, fontWeight:700 }}>{p.w}</div>
                   <div style={{ textAlign:"center", color:C.red, fontWeight:700 }}>{p.l}</div>
                   <div style={{ textAlign:"center", color:C.gray }}>{p.t}</div>
                   <div style={{ textAlign:"center", fontSize:15, fontWeight:900, color:C.red }}>{p.pts}</div>
-                  <div style={{ textAlign:"center", fontSize:13, color:C.gold, fontWeight:700 }}>{i<3?$$([1000,500,250][i]):"—"}</div>
+                  <div style={{ textAlign:"center", fontSize:13, color:C.gold, fontWeight:700 }}>{i<3?$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i]):"—"}</div>
                   <div style={{ textAlign:"center", fontSize:14, fontWeight:900, color:pc }}>${sharePrice}</div>
                 </div>
               );
@@ -2664,13 +2762,28 @@ function PnLView({ s1players, s2players, s1standings, s2standings, supporters, p
   );
 }
 // ─── PLAYER BOARD ─────────────────────────────────────────────────────────────
-function PlayerBoardView({ standings, s1standings, s2standings, playoffs, supporters, season, startStripeCheckout, checkoutBusyId }) {
+function PlayerBoardView({ standings, s1standings, s2standings, playoffs, supporters = [], season, startStripeCheckout, checkoutBusyId, players = [], matches = [], startPlayerStripeCheckout, playerCheckoutBusyId }) {
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState("");
+  const [selectedYourName, setSelectedYourName] = useState("");
+
   const finalMatch = playoffs.find(m=>m.round.includes("Championship"));
   const champ = finalMatch ? getWinner(finalMatch) : null;
-  const marketPrice = selectedPlayer ? getSharePrice(selectedPlayer, standings) : 0;
+  const marketPrice = selectedPlayer ? getSharePrice(selectedPlayer, standings, players) : 0;
+  
+  const seasonPrizes = season === 1 ? S1_PRIZES : season === 2 ? S2_PRIZES : S3_PRIZES;
+
+  const getBackersStr = (playerName) => {
+    const list = supporters.filter(s => s.player === playerName && (parseInt(s.shares) || 0) > 0 && !s.cashedS1 && !s.salvaged);
+    if (list.length === 0) return "No backers";
+    return list.map(s => `${s.name} (${s.shares})`).join(", ");
+  };
+
+  const yourPlayerObj = players.find(p => p.name === selectedYourName);
+  const isYourLocked = yourPlayerObj ? isPlayerLocked(yourPlayerObj, season, matches) : false;
+  const yourOwedAmount = yourPlayerObj ? getPlayerOwedAmount(yourPlayerObj, season, matches) : 0;
+
   return (
     <div>
       <div style={{ background:"linear-gradient(135deg,#0a0a1a,#16162a)", border:`2px solid ${C.red}`, borderRadius:14, padding:"24px 20px", textAlign:"center", marginBottom:24 }}>
@@ -2681,6 +2794,64 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
           Currently: Season {season}
         </div>
       </div>
+
+      <div style={{ marginBottom:24 }}>
+        <Card title="My Account & Dues" borderColor={C.blue} icon="👤">
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            <div style={{ display:"flex", gap:12, alignItems:"end", flexWrap:"wrap" }}>
+              <div style={{ flex:1, minWidth:200 }}>
+                <div style={{ fontSize:12, color:C.gray, marginBottom:5 }}>Select your player name to check dues:</div>
+                <select value={selectedYourName} onChange={e => setSelectedYourName(e.target.value)} style={selStyle}>
+                  <option value="">— select your name —</option>
+                  {players.filter(p => p.name).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                </select>
+              </div>
+              {yourPlayerObj && (
+                <div style={{ display:"flex", gap:8 }}>
+                  <button
+                    onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(yourPlayerObj, "registration")}
+                    disabled={yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] || !startPlayerStripeCheckout || playerCheckoutBusyId === `registration-${yourPlayerObj.id}`}
+                    style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:8, padding:"10px 14px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:900, opacity: yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? 0.5 : 1 }}>
+                    {playerCheckoutBusyId === `registration-${yourPlayerObj.id}` ? "Opening" : yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? "Reg Paid ✓" : "Pay Reg"}
+                  </button>
+                  <button
+                    onClick={() => startPlayerStripeCheckout && startPlayerStripeCheckout(yourPlayerObj, "weekly_dues")}
+                    disabled={yourOwedAmount <= (yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? 0 : (season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG)) || !startPlayerStripeCheckout || playerCheckoutBusyId === `weekly_dues-${yourPlayerObj.id}`}
+                    style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:8, padding:"10px 14px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:900, opacity: yourOwedAmount <= (yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? 0 : (season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG)) ? 0.5 : 1 }}>
+                    {playerCheckoutBusyId === `weekly_dues-${yourPlayerObj.id}` ? "Opening" : "Pay Week Dues ($25)"}
+                  </button>
+                </div>
+              )}
+            </div>
+            {yourPlayerObj ? (
+              <div style={{ background:isYourLocked ? "#2a0010" : "#002a16", border:`1px solid ${isYourLocked ? C.red : C.green}`, borderRadius:8, padding:"12px 16px", marginTop:6 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div>
+                    <span style={{ fontSize:15, fontWeight:900 }}>{yourPlayerObj.name}</span>
+                    <span style={{ fontSize:11, color:C.gray, marginLeft:10 }}>
+                      Reg: {yourPlayerObj[season === 1 ? "paid" : season === 2 ? "s2paid" : "s3paid"] ? "Paid" : "Unpaid"} · 
+                      Weeks Paid: {yourPlayerObj[season === 1 ? "weeksPaid" : season === 2 ? "s2weeksPaid" : "s3weeksPaid"]}
+                    </span>
+                  </div>
+                  <span style={{ fontSize:14, fontWeight:900, color:isYourLocked ? C.red : C.green }}>
+                    {isYourLocked ? `🔒 LOCKED (Owes $${yourOwedAmount})` : `✅ ACTIVE (Owes $${yourOwedAmount})`}
+                  </span>
+                </div>
+                {isYourLocked && (
+                  <div style={{ fontSize:11, color:C.red, marginTop:6, fontStyle:"italic" }}>
+                    ⚠️ Note: You must pay outstanding dues to be unlocked before your next match.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize:12, color:C.gray, textAlign:"center", fontStyle:"italic", padding:"10px 0" }}>
+                Select your name above to check if you owe dues and clear them via Stripe checkout.
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:13, color:C.gray, fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:10 }}>💰 Share Prices Right Now</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:10 }}>
@@ -2718,6 +2889,7 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
           <div style={{ marginTop:10, fontSize:12, color:C.gray }}>Stripe opens in test/production mode based on your configured backend. This player view does not expose operator profit data.</div>
         </Card>
       </div>
+
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:13, color:C.gray, fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:10 }}>🏆 Season {season} Standings</div>
         {standings.length===0 ? (
@@ -2728,12 +2900,16 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
               {[0,1,2].map(i=>standings[i]?(
                 <div key={i} style={{ background:C.card, border:`2px solid ${[C.gold,"#aaa","#cd7f32"][i]}`, borderRadius:12, padding:"16px 12px", textAlign:"center" }}>
                   <div style={{ fontSize:30 }}>{["🥇","🥈","🥉"][i]}</div>
-                  <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i], margin:"6px 0" }}>{standings[i].name}</div>
+                  <div style={{ fontSize:18, fontWeight:900, color:[C.gold,"#ccc","#cd7f32"][i], margin:"6px 0" }}>
+                    {standings[i].name}
+                    {isPlayerLocked(players.find(x => x.name === standings[i].name), season, matches) && <span style={{ color:C.red, fontSize:11, marginLeft:6 }}>🔒 LOCKED</span>}
+                  </div>
                   <div style={{ fontSize:13, color:C.gray }}>{standings[i].pts} pts</div>
                   <div style={{ marginTop:8, fontSize:11, color:C.gray }}>Season prize</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:C.green }}>{$$([SEASON_PRIZES.p1,SEASON_PRIZES.p2,SEASON_PRIZES.p3][i])}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.green }}>{$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i])}</div>
+                  <div style={{ fontSize:11, color:C.gray, marginTop:6, fontStyle:"italic" }}>Backers: {getBackersStr(standings[i].name)}</div>
                   <div style={{ marginTop:6, fontWeight:900, color:[C.red,C.gold,C.blue][i]||C.gray, fontSize:14 }}>
-                    Shares: ${getSharePrice(standings[i].name,standings)}/each
+                    Shares: ${getSharePrice(standings[i].name,standings,players)}/each
                   </div>
                 </div>
               ):(
@@ -2741,22 +2917,31 @@ function PlayerBoardView({ standings, s1standings, s2standings, playoffs, suppor
               ))}
             </div>
             <div style={{ background:C.card, border:`1px solid ${C.cardBorder}`, borderRadius:10, overflow:"hidden" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"38px 1fr 40px 40px 50px 70px 80px", padding:"8px 14px", background:C.dimBg, borderBottom:`1px solid ${C.cardBorder}` }}>
+              <div style={{ display:"grid", gridTemplateColumns:"38px 1.5fr 40px 40px 50px 70px 80px", padding:"8px 14px", background:C.dimBg, borderBottom:`1px solid ${C.cardBorder}` }}>
                 {["#","Player","W","L","Pts","S Prize","Share $"].map(h=>(
                   <div key={h} style={{ fontSize:10, color:C.gray, fontWeight:700, textAlign:"center" }}>{h}</div>
                 ))}
               </div>
               {standings.map((p,i)=>{
-                const sp = getSharePrice(p.name,standings);
+                const sp = getSharePrice(p.name,standings,players);
                 const pc = sp===75?C.red:sp===50?C.gold:sp===35?C.blue:C.gray;
+                const dbPlayer = players.find(x => x.name === p.name);
+                const locked = isPlayerLocked(dbPlayer, season, matches);
+                const owed = getPlayerOwedAmount(dbPlayer, season, matches);
                 return (
-                  <div key={p.name} style={{ display:"grid", gridTemplateColumns:"38px 1fr 40px 40px 50px 70px 80px", padding:"10px 14px", borderBottom:`1px solid ${C.cardBorder}`, background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent", alignItems:"center" }}>
+                  <div key={p.name} style={{ display:"grid", gridTemplateColumns:"38px 1.5fr 40px 40px 50px 70px 80px", padding:"10px 14px", borderBottom:`1px solid ${C.cardBorder}`, background:i<3?`${[C.gold,"#aaa","#cd7f32"][i]}11`:"transparent", alignItems:"center" }}>
                     <div style={{ textAlign:"center", fontWeight:900, fontSize:14, color:i<3?[C.gold,"#ccc","#cd7f32"][i]:C.gray }}>#{i+1}</div>
-                    <div style={{ fontWeight:700, fontSize:14 }}>{p.name}</div>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>
+                        {p.name}
+                        {locked && <span style={{ color:C.red, fontSize:10, fontWeight:800, background:"#2a0010", border:`1px solid ${C.red}`, borderRadius:4, padding:"1px 4px" }}>🔒 LOCKED (Owes ${owed})</span>}
+                      </div>
+                      <div style={{ fontSize:11, color:C.gray }}>Backers: {getBackersStr(p.name)}</div>
+                    </div>
                     <div style={{ textAlign:"center", color:C.green, fontWeight:700 }}>{p.w}</div>
                     <div style={{ textAlign:"center", color:C.red, fontWeight:700 }}>{p.l}</div>
                     <div style={{ textAlign:"center", fontWeight:900, color:C.red }}>{p.pts}</div>
-                    <div style={{ textAlign:"center", color:C.gold, fontWeight:700, fontSize:13 }}>{i<3?$$([1000,500,250][i]):"—"}</div>
+                    <div style={{ textAlign:"center", color:C.gold, fontWeight:700, fontSize:13 }}>{i<3?$$([seasonPrizes.p1,seasonPrizes.p2,seasonPrizes.p3][i]):"—"}</div>
                     <div style={{ textAlign:"center", fontWeight:900, color:pc, fontSize:15 }}>${sp}</div>
                   </div>
                 );

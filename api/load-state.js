@@ -32,7 +32,6 @@ export default async function handler(req, res) {
 
   const { user, error: authError } = await getAuthenticatedUser(req, supabase)
   if (authError) return errorResponse(res, 401, authError, requestId)
-  if (!requireOperatorUser(user)) return errorResponse(res, 403, 'Only operators can load dashboard state', requestId)
 
   try {
     const { data, error } = await supabase
@@ -43,7 +42,17 @@ export default async function handler(req, res) {
 
     if (error) throw error
 
-    const userState = data?.settings?.userDashboards?.[user.id] || null
+    const role = getUserRole(user)
+    let userState = null
+    if (role === 'operator') {
+      userState = data?.settings?.userDashboards?.[user.id] || null
+    } else {
+      const dashboards = Object.values(data?.settings?.userDashboards || {})
+      if (dashboards.length > 0) {
+        dashboards.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+        userState = dashboards[0]
+      }
+    }
 
     return res.status(200).json({
       dashboard: userState?.dashboard || null,

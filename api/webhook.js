@@ -1,4 +1,4 @@
-﻿import Stripe from 'stripe'
+import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import {
   errorResponse,
@@ -63,6 +63,100 @@ export default async function handler(req, res) {
     if (type === 'weekly_dues' && playerId) {
       const { data: p } = await supabase.from('players').select('weekly_dues_paid').eq('id', playerId).single()
       if (p) await supabase.from('players').update({ weekly_dues_paid: [...(p.weekly_dues_paid || []), (p.weekly_dues_paid || []).length + 1] }).eq('id', playerId)
+    }
+
+    // Update app_state settings JSON in Supabase
+    try {
+      const { data: stateData, error: stateError } = await supabase
+        .from('app_state')
+        .select('settings')
+        .eq('id', 1)
+        .maybeSingle()
+
+      if (!stateError && stateData?.settings) {
+        const settings = stateData.settings
+        const userDashboards = settings.userDashboards || {}
+        let updated = false
+
+        for (const userId of Object.keys(userDashboards)) {
+          const dash = userDashboards[userId]?.dashboard
+          if (!dash) continue
+
+          const currentSeason = Number(season) || 1
+
+          if (type === 'registration' && playerId) {
+            const playersListKey = currentSeason === 1 ? 's1players' : currentSeason === 2 ? 's2players' : 's3players'
+            const paidKey = currentSeason === 1 ? 'paid' : currentSeason === 2 ? 's2paid' : 's3paid'
+            if (Array.isArray(dash[playersListKey])) {
+              const p = dash[playersListKey].find(x => x.id === Number(playerId))
+              if (p) {
+                p[paidKey] = true
+                updated = true
+              }
+            }
+          } else if (type === 'weekly_dues' && playerId) {
+            const playersListKey = currentSeason === 1 ? 's1players' : currentSeason === 2 ? 's2players' : 's3players'
+            const weeksPaidKey = currentSeason === 1 ? 'weeksPaid' : currentSeason === 2 ? 's2weeksPaid' : 's3weeksPaid'
+            if (Array.isArray(dash[playersListKey])) {
+              const p = dash[playersListKey].find(x => x.id === Number(playerId))
+              if (p) {
+                p[weeksPaidKey] = (parseInt(p[weeksPaidKey]) || 0) + 1
+                updated = true
+              }
+            }
+          } else if (type === 'share' && playerName) {
+            if (!Array.isArray(dash.supporters)) {
+              dash.supporters = []
+            }
+            // Check if there is an existing matching supporter
+            const existing = dash.supporters.find(
+              x => x.name === buyerName && x.player === playerName && !x.cashedS1 && !x.salvaged
+            )
+            if (existing) {
+              existing.shares = (parseInt(existing.shares) || 0) + 1
+              updated = true
+            } else {
+              // find first slot with empty name or append
+              const emptySlot = dash.supporters.find(x => !x.name)
+              if (emptySlot) {
+                emptySlot.name = buyerName
+                emptySlot.player = playerName
+                emptySlot.shares = 1
+                emptySlot.pricePaid = amount
+                emptySlot.cashedS1 = false
+                emptySlot.lockedUntilMove = false
+                emptySlot.selfBuy = false
+                emptySlot.salvaged = false
+                emptySlot.salvageType = null
+                updated = true
+              } else {
+                dash.supporters.push({
+                  id: dash.supporters.length + 1,
+                  name: buyerName,
+                  player: playerName,
+                  shares: 1,
+                  pricePaid: amount,
+                  cashedS1: false,
+                  lockedUntilMove: false,
+                  selfBuy: false,
+                  salvaged: false,
+                  salvageType: null
+                })
+                updated = true
+              }
+            }
+          }
+        }
+
+        if (updated) {
+          await supabase
+            .from('app_state')
+            .update({ settings, updated_at: new Date().toISOString() })
+            .eq('id', 1)
+        }
+      }
+    } catch (dbErr) {
+      console.error('Failed to update app_state in webhook:', dbErr)
     }
   }
 
