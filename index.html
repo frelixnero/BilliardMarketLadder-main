@@ -86,6 +86,22 @@ const WEEK_COUNT   = 8;
 const SEASON_PRIZES  = { p1: 1000, p2: 500, p3: 250, mvp: 150 };
 const PLAYOFF_PRIZES = { p1: 600, p2: 300, p3: 100 };
 const SIX_PRIZES     = { p1: 200, p2: 100, p3: 50 };
+const TEAM_REG = {
+  doubles: { perPerson: 325, team: 650 },
+  triples: { perPerson: 325, team: 975 },
+};
+const TEAM_PRIZES_PER_PERSON = {
+  doubles: {
+    1: { p1: 850, p2: 450, p3: 250, p4: 100, p5plus: 75 },
+    2: { p1: 900, p2: 700, p3: 400, p4: 200, p5plus: 75 },
+    3: { p1: 1300, p2: 850, p3: 600, p4: 350, p5plus: 75 },
+  },
+  triples: {
+    1: { p1: 850, p2: 450, p3: 250, p4: 100, p5plus: 75 },
+    2: { p1: 900, p2: 700, p3: 400, p4: 200, p5plus: 75 },
+    3: { p1: 1300, p2: 850, p3: 600, p4: 350, p5plus: 75 },
+  },
+};
 const PROPOSAL_METRICS = {
   grossRevenue: 101750,
   barCut: 8939,
@@ -137,6 +153,11 @@ const defaultSupporters = () =>
     pricePaid: 25,
     cashedS1: false,
   }));
+const defaultTeamModel = () => ({
+  season: 1,
+  doublesTeams: 10,
+  triplesTeams: 10,
+});
 const default6Ball = () =>
   Array.from({ length: PLAYER_COUNT }, (_, i) => ({
     id: i+1, name:"", time:"", eligible: false,
@@ -422,6 +443,7 @@ function App({ authUser, supabaseClient, onLogout }) {
   const [s2players, setS2Players]   = useState(saved?.s2players   ?? defaultPlayers());
   const [s2matches, setS2Matches]   = useState(saved?.s2matches   ?? defaultMatches(PLAYER_COUNT/2 * WEEK_COUNT));
   const [supporters, setSupporters] = useState(saved?.supporters  ?? defaultSupporters());
+  const [teamModel, setTeamModel]   = useState(saved?.teamModel   ?? defaultTeamModel());
   const [sixBall, setSixBall]       = useState(saved?.sixBall     ?? default6Ball());
   const [playoffs, setPlayoffs]     = useState(saved?.playoffs    ?? defaultPlayoffs());
   const [lastSaved, setLastSaved]   = useState(null);
@@ -431,7 +453,7 @@ function App({ authUser, supabaseClient, onLogout }) {
   const [playerCheckoutBusyId, setPlayerCheckoutBusyId] = useState(null);
 
   const snapshot = {
-    season, s1players, s1matches, s2players, s2matches, supporters, sixBall, playoffs,
+    season, s1players, s1matches, s2players, s2matches, supporters, teamModel, sixBall, playoffs,
   };
 
   const applySnapshot = (next) => {
@@ -442,15 +464,16 @@ function App({ authUser, supabaseClient, onLogout }) {
     setS2Players(next.s2players ?? defaultPlayers());
     setS2Matches(next.s2matches ?? defaultMatches(PLAYER_COUNT/2 * WEEK_COUNT));
     setSupporters(next.supporters ?? defaultSupporters());
+    setTeamModel(next.teamModel ?? defaultTeamModel());
     setSixBall(next.sixBall ?? default6Ball());
     setPlayoffs(next.playoffs ?? defaultPlayoffs());
   };
 
   // Auto-save whenever any data changes
   useEffect(() => {
-    saveState({ season, s1players, s1matches, s2players, s2matches, supporters, sixBall, playoffs });
+    saveState({ season, s1players, s1matches, s2players, s2matches, supporters, teamModel, sixBall, playoffs });
     setLastSaved(new Date().toLocaleTimeString());
-  }, [season, s1players, s1matches, s2players, s2matches, supporters, sixBall, playoffs]);
+  }, [season, s1players, s1matches, s2players, s2matches, supporters, teamModel, sixBall, playoffs]);
 
   const getAccessToken = async () => {
     if (!supabaseClient) throw new Error("Supabase auth is not configured.");
@@ -599,6 +622,7 @@ function App({ authUser, supabaseClient, onLogout }) {
     localStorage.removeItem(SAVE_KEY);
     setSeason(1); setS1Players(defaultPlayers()); setS1Matches(defaultMatches(0));
     setS2Players(defaultPlayers()); setS2Matches(defaultMatches(PLAYER_COUNT/2*WEEK_COUNT));
+    setTeamModel(defaultTeamModel());
     setSupporters(defaultSupporters()); setSixBall(default6Ball()); setPlayoffs(defaultPlayoffs());
   };
   const players    = season===1 ? s1players : s2players;
@@ -654,9 +678,49 @@ function App({ authUser, supabaseClient, onLogout }) {
       totalBar: barCut+barShareCut,
     };
   }, [s1players, s2players, supporters, s2standings]);
+  const teamEconomics = useMemo(() => {
+    const seasonKey = String(teamModel.season || 1);
+    const doublesTeams = Math.max(0, parseInt(teamModel.doublesTeams) || 0);
+    const triplesTeams = Math.max(0, parseInt(teamModel.triplesTeams) || 0);
+
+    const calcPayout = (format, teamCount, teamSize) => {
+      const p = TEAM_PRIZES_PER_PERSON[format][seasonKey] || TEAM_PRIZES_PER_PERSON[format][1];
+      const top4 = (p.p1 + p.p2 + p.p3 + p.p4) * teamSize;
+      const restCount = Math.max(0, teamCount - 4);
+      const rest = restCount * p.p5plus * teamSize;
+      return {
+        first: p.p1 * teamSize,
+        second: p.p2 * teamSize,
+        third: p.p3 * teamSize,
+        fourth: p.p4 * teamSize,
+        fifthPlusPerTeam: p.p5plus * teamSize,
+        restCount,
+        total: top4 + rest,
+      };
+    };
+
+    const doublesReg = doublesTeams * TEAM_REG.doubles.team;
+    const triplesReg = triplesTeams * TEAM_REG.triples.team;
+    const doublesPayout = calcPayout('doubles', doublesTeams, 2);
+    const triplesPayout = calcPayout('triples', triplesTeams, 3);
+
+    return {
+      season: Number(seasonKey),
+      doublesTeams,
+      triplesTeams,
+      doublesReg,
+      triplesReg,
+      totalReg: doublesReg + triplesReg,
+      doublesPayout,
+      triplesPayout,
+      totalPayout: doublesPayout.total + triplesPayout.total,
+      net: (doublesReg + triplesReg) - (doublesPayout.total + triplesPayout.total),
+    };
+  }, [teamModel]);
   const TABS = [
     { id:"home",        icon:"🏠", label:"Home" },
     { id:"pitch",       icon:"🧭", label:"Pitch MVP" },
+    { id:"teams",       icon:"🤼", label:"Teams" },
     { id:"players",     icon:"👤", label:"Players" },
     { id:"matches",     icon:"🎱", label:"Matches" },
     { id:"standings",   icon:"🏆", label:"Standings" },
@@ -671,6 +735,7 @@ function App({ authUser, supabaseClient, onLogout }) {
     players, setPlayers, matches, setMatches,
     supporters, setSupporters, sixBall, setSixBall,
     playoffs, setPlayoffs, standings, sixRanked, money,
+    teamModel, setTeamModel, teamEconomics,
     s1standings, s2standings, season, setSeason, setTab,
     s1players, s2players, s1matches, s2matches,
     startStripeCheckout, checkoutBusyId,
@@ -738,6 +803,7 @@ function App({ authUser, supabaseClient, onLogout }) {
       <div style={{ padding:"20px", maxWidth:980, margin:"0 auto" }}>
         {tab==="home"        && <HomeView {...views} />}
         {tab==="pitch"       && <PitchView />}
+        {tab==="teams"       && <TeamsView {...views} />}
         {tab==="players"     && <PlayersView {...views} />}
         {tab==="matches"     && <MatchesView {...views} />}
         {tab==="standings"   && <StandingsView {...views} />}
@@ -966,6 +1032,92 @@ function PitchView() {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+// ─── TEAMS ───────────────────────────────────────────────────────────────────
+function TeamsView({ teamModel, setTeamModel, teamEconomics }) {
+  const setSeason = (season) => setTeamModel(x => ({ ...x, season }));
+  const setDoublesTeams = (n) => setTeamModel(x => ({ ...x, doublesTeams: Math.max(0, n) }));
+  const setTriplesTeams = (n) => setTeamModel(x => ({ ...x, triplesTeams: Math.max(0, n) }));
+
+  const d = teamEconomics.doublesPayout;
+  const t = teamEconomics.triplesPayout;
+
+  return (
+    <div>
+      <PageTitle icon="🤼" title="Team Registration & Prizes" desc="Client model for 2v2 Doubles and 3v3 Triples (season-based payout matrix)." />
+      <Tip color={C.blue}>Configured from your client spec: 2v2 at $325/person ($650/team), 3v3 at $325/person ($975/team), with season-based team prize ladders.</Tip>
+
+      <Card title="Team Controls" icon="⚙️" borderColor={C.blue}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, alignItems:"end" }}>
+          <div>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:8 }}>Prize season</div>
+            <div style={{ display:"flex", gap:8 }}>
+              {[1,2,3].map(s => (
+                <button key={s} onClick={() => setSeason(s)} style={{
+                  background: teamModel.season===s ? C.red : C.card,
+                  border:`2px solid ${teamModel.season===s ? C.red : C.cardBorder}`,
+                  color:C.white, borderRadius:8, padding:"6px 12px",
+                  cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700,
+                }}>S{s}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:8 }}>Doubles teams (2v2)</div>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <button onClick={() => setDoublesTeams((teamModel.doublesTeams||0)-1)} style={btnSm}>−</button>
+              <div style={{ minWidth:42, textAlign:"center", fontSize:18, fontWeight:900, color:C.gold }}>{teamModel.doublesTeams||0}</div>
+              <button onClick={() => setDoublesTeams((teamModel.doublesTeams||0)+1)} style={btnSm}>+</button>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:C.gray, marginBottom:8 }}>Triples teams (3v3)</div>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <button onClick={() => setTriplesTeams((teamModel.triplesTeams||0)-1)} style={btnSm}>−</button>
+              <div style={{ minWidth:42, textAlign:"center", fontSize:18, fontWeight:900, color:C.purple }}>{teamModel.triplesTeams||0}</div>
+              <button onClick={() => setTriplesTeams((teamModel.triplesTeams||0)+1)} style={btnSm}>+</button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:16 }}>
+        <BigCard icon="💵" title="Team registration in" value={$$(teamEconomics.totalReg)} color={C.green} />
+        <BigCard icon="🏆" title="Team prize payout out" value={$$(teamEconomics.totalPayout)} color={C.red} />
+        <BigCard icon="📈" title="Team net" value={$$(teamEconomics.net)} color={teamEconomics.net>=0?C.blue:C.red} />
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+        <Card title="2v2 Doubles" icon="🎱" borderColor={C.gold}>
+          <MRow label="Fee per person" value="$325" />
+          <MRow label="Fee per team" value="$650" />
+          <MRow label="Team count" value={String(teamEconomics.doublesTeams)} />
+          <MRow label="Registration total" value={$$(teamEconomics.doublesReg)} color={C.green} big />
+          <div style={{ height:8 }} />
+          <MRow label="1st prize (team total)" value={$$(d.first)} />
+          <MRow label="2nd prize (team total)" value={$$(d.second)} />
+          <MRow label="3rd prize (team total)" value={$$(d.third)} />
+          <MRow label="4th prize (team total)" value={$$(d.fourth)} />
+          <MRow label={`5th+ (${d.restCount} teams) @ ${$$(d.fifthPlusPerTeam)} each`} value={$$(d.restCount * d.fifthPlusPerTeam)} />
+          <MRow label="Total doubles payout" value={$$(d.total)} color={C.red} big />
+        </Card>
+
+        <Card title="3v3 Triples" icon="🧩" borderColor={C.purple}>
+          <MRow label="Fee per person" value="$325" />
+          <MRow label="Fee per team" value="$975" />
+          <MRow label="Team count" value={String(teamEconomics.triplesTeams)} />
+          <MRow label="Registration total" value={$$(teamEconomics.triplesReg)} color={C.green} big />
+          <div style={{ height:8 }} />
+          <MRow label="1st prize (team total)" value={$$(t.first)} />
+          <MRow label="2nd prize (team total)" value={$$(t.second)} />
+          <MRow label="3rd prize (team total)" value={$$(t.third)} />
+          <MRow label="4th prize (team total)" value={$$(t.fourth)} />
+          <MRow label={`5th+ (${t.restCount} teams) @ ${$$(t.fifthPlusPerTeam)} each`} value={$$(t.restCount * t.fifthPlusPerTeam)} />
+          <MRow label="Total triples payout" value={$$(t.total)} color={C.red} big />
+        </Card>
+      </div>
     </div>
   );
 }
