@@ -162,6 +162,7 @@ const getPlayoffPayout = (playerName, playoffs) => {
 const defaultPlayers = () =>
   Array.from({ length: PLAYER_COUNT }, (_, i) => ({
     id: i+1, name: "", paid: false, weeksPaid: 0, fastTime: false,
+    exhibWins: 0, exhibLosses: 0,
   }));
 const defaultMatches = (weekOffset = 0) => {
   const out = []; let id = 1 + weekOffset * (PLAYER_COUNT/2);
