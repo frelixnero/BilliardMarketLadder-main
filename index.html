@@ -2328,7 +2328,8 @@ function SharesView({ supporters, setSupporters, players, money, standings, play
             const pc         = mktPrice===200?C.red:mktPrice===150?"#ff6b35":mktPrice===100?C.gold:mktPrice===60?C.blue:C.gray;
             const playerTotal = playerTotals[s.player]||0;
             const playerAtCap = s.player && playerTotal >= SHARE_CAP_PER_PLAYER;
-            const atPurchaseMax = shares >= SHARES_PER_PURCHASE_MAX;
+            const maxShares  = s.selfBuy ? PLAYER_SELF_BUY_MAX : SUPPORTER_BUY_MAX;
+            const atPurchaseMax = shares >= maxShares;
             const canBuyMore = !s.cashedS1 && !s.lockedUntilMove && !playerAtCap && !atPurchaseMax;
             return (
               <div key={s.id} style={{ display:"grid", gridTemplateColumns:"24px 1fr 1fr 70px 80px 80px 90px 90px 90px", gap:4, padding:"8px 10px", background:s.cashedS1?"#0a1a0a":s.lockedUntilMove?"#1a0a00":i%2===0?C.card:C.dimBg, borderTop:`1px solid ${C.cardBorder}`, alignItems:"center", opacity:s.cashedS1?0.55:1 }}>
@@ -2358,16 +2359,16 @@ function SharesView({ supporters, setSupporters, players, money, standings, play
                     <span style={{ minWidth:20, textAlign:"center", fontWeight:900, color:atPurchaseMax?C.red:C.gold, fontSize:14 }}>{shares}</span>
                     <button onClick={()=>{
                       if(!s.cashedS1 && !s.lockedUntilMove && !playerAtCap) {
-                        const newShares = Math.min(SHARES_PER_PURCHASE_MAX,(parseInt(s.shares)||0)+1);
+                        const newShares = Math.min(maxShares,(parseInt(s.shares)||0)+1);
                         const base = s.selfBuy ? PLAYER_SELF_BUY_PRICE : getSharePrice(s.player, standings);
                         const p = s.salvageType==="discount" ? Math.max(5,base-SALVAGE_DISCOUNT) : base;
                         if(!s.shares||s.shares===0) updSupp(i,"pricePaid",p);
                         updSupp(i,"shares",newShares);
-                        if (newShares >= SHARES_PER_PURCHASE_MAX) updSupp(i,"lockedUntilMove",true);
+                        if (newShares >= maxShares) updSupp(i,"lockedUntilMove",true);
                       }
                     }} style={{ ...btnSm, width:20, height:20, fontSize:13, opacity:canBuyMore?1:0.3 }}>+</button>
                   </div>
-                  <div style={{ fontSize:9, color:atPurchaseMax?C.red:C.gray, textAlign:"center" }}>{shares}/{SHARES_PER_PURCHASE_MAX} max</div>
+                  <div style={{ fontSize:9, color:atPurchaseMax?C.red:C.gray, textAlign:"center" }}>{shares}/{maxShares} max</div>
                 </div>
                 <div style={{ textAlign:"center", fontSize:12, color:C.gray }}>{totalPaid>0?$$(totalPaid):"—"}</div>
                 <div style={{ textAlign:"center", fontSize:12, fontWeight:700, color:pc }}>{totalMkt>0?$$(totalMkt):"—"}</div>
@@ -3113,3 +3114,91 @@ function RulesView() {
 }
 
 // ─── BARS VIEW ─────────────────────────────────────────────────
+function BarsView({ bars, setBars, players, season }) {
+  const updBar = (i, k, v) => setBars(bs => bs.map((b, idx) => idx === i ? { ...b, [k]: v } : b));
+  const regFee = season === 1 ? S1_REG : season === 2 ? S2_REG : S3_REG;
+
+  return (
+    <div>
+      <PageTitle icon="🏪" title="Bar Tab Management" desc="Manage bar details, track host locations, and monitor bar-level share trade volumes and cuts." />
+      <Tip>Bar owners get a 10% cut of registration fees from players registered at their bar (BAR_REG_CUT = 10%) and 3% of share trading volume (BAR_SHARE_CUT = 3%).</Tip>
+      
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+        {bars.map((b, i) => {
+          const barPlayers = players.filter(p => p.barId === b.id);
+          const regCollected = barPlayers.length * regFee;
+          const barRegCut = Math.round(regCollected * BAR_REG_CUT);
+          
+          return (
+            <Card key={b.id} title={b.name || `Bar ${b.id}`} borderColor={C.blue} icon="🏪">
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: C.gray, marginBottom: 3 }}>BAR NAME</div>
+                  <input value={b.name || ""} onChange={e => updBar(i, "name", e.target.value)} placeholder="Enter bar name..." style={textInp} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: C.gray, marginBottom: 3 }}>OWNER NAME</div>
+                  <input value={b.ownerName || ""} onChange={e => updBar(i, "ownerName", e.target.value)} placeholder="Owner name..." style={textInp} />
+                </div>
+                <div style={{ borderTop: `1px solid ${C.cardBorder}`, marginTop: 8, paddingTop: 8, fontSize: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ color: C.gray }}>Registered Players:</span>
+                    <span style={{ fontWeight: 700 }}>{barPlayers.length}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ color: C.gray }}>Registration Vol:</span>
+                    <span style={{ color: C.green, fontWeight: 700 }}>{$$ (regCollected)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ color: C.gray }}>Bar Owner Reg Cut (10%):</span>
+                    <span style={{ color: C.gold, fontWeight: 700 }}>{$$ (barRegCut)}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── MANUAL VIEW ───────────────────────────────────────────────
+function ManualView({ money, season, bars }) {
+  return (
+    <div>
+      <PageTitle icon="📗" title="Operator Manual & System Guide" desc="Overview of rules, parameters, financial splits, and manual operations for league operators." />
+      <Tip>This screen provides guidance on the financial structure and active league operations.</Tip>
+      
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Card title="💰 Financial Flows & Payout Splits" borderColor={C.gold} icon="💵">
+          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6 }}>
+            <p style={{ marginBottom: 8 }}>
+              <strong>Registration Fees:</strong> Player registration is collected at the start of each season. Bars receive a <strong>10%</strong> cut of the registration fees of all players registered at their bar.
+            </p>
+            <p style={{ marginBottom: 8 }}>
+              <strong>Weekly Dues:</strong> Players pay <strong>$25/week</strong>.
+            </p>
+            <p style={{ marginBottom: 8 }}>
+              <strong>Share Trading Fees:</strong> The operator takes a <strong>15%</strong> transaction fee on all supporter share purchases. Bars receive <strong>3%</strong> of share trading volume (or 2% depending on configuration).
+            </p>
+            <p style={{ marginBottom: 8 }}>
+              <strong>Net Profits:</strong> Remaining revenue after payouts is split equally among the 4 league partners.
+            </p>
+          </div>
+        </Card>
+        
+        <Card title="🔧 System Parameters & Settings" borderColor={C.blue} icon="⚙️">
+          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6 }}>
+            <p style={{ marginBottom: 4 }}><strong>S1 Registration Fee:</strong> $150</p>
+            <p style={{ marginBottom: 4 }}><strong>S2 Registration Fee:</strong> $175</p>
+            <p style={{ marginBottom: 4 }}><strong>S3 Registration Fee:</strong> $200</p>
+            <p style={{ marginBottom: 4 }}><strong>Weekly Dues Fee:</strong> $25/week</p>
+            <p style={{ marginBottom: 4 }}><strong>Share Price Floor:</strong> $10</p>
+            <p style={{ marginBottom: 4 }}><strong>Share Price Ceiling:</strong> $150</p>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
