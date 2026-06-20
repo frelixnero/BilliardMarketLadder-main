@@ -8,6 +8,7 @@ import {
   requireOperatorUser,
   requireEnv,
   getUserRole,
+  getConfiguredOperatorEmails,
 } from './_lib/security.js'
 
 const envCheck = requireEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'])
