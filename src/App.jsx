@@ -1130,7 +1130,7 @@ function App({ authUser, supabaseClient, onLogout }) {
       <aside className={`w-64 flex-shrink-0 fixed md:sticky top-0 h-screen bg-surface-container-low border-r border-outline-variant flex flex-col py-lg px-md z-[70] overflow-y-auto transition-transform transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
         <div className="mb-xl px-sm flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="font-display-lg text-display-lg font-bold text-primary tracking-tighter">LM</span>
+            <span className="font-display-lg text-display-lg font-bold text-primary tracking-tighter">BML</span>
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mt-xs">Elite Tier</p>
           </div>
           <button className="md:hidden text-on-surface-variant hover:text-on-surface" onClick={() => setMobileMenuOpen(false)}>
@@ -1182,10 +1182,7 @@ function App({ authUser, supabaseClient, onLogout }) {
             <span className="material-symbols-outlined text-[28px]">menu</span>
           </button>
           <div className="flex items-center gap-sm">
-            <span className="material-symbols-outlined text-primary text-[28px] md:text-headline-lg hidden sm:block" style={{ fontVariationSettings: "'FILL' 1" }}>
-              sports_billiards
-            </span>
-            <h1 className="text-title-md md:font-headline-lg md:text-headline-lg font-bold text-on-surface tracking-tight whitespace-nowrap">Market Ladder</h1>
+            <h1 className="text-title-md md:font-headline-lg md:text-headline-lg font-bold text-on-surface tracking-tight whitespace-nowrap">Billiards Market Ladder</h1>
           </div>
         </div>
         <div className="flex items-center gap-sm md:gap-lg overflow-x-auto scrollbar-hide w-full sm:w-auto pb-1 sm:pb-0">
