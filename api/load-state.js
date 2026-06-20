@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       .from('app_state')
       .select('settings, updated_at')
       .eq('id', 1)
-      .single()
+      .maybeSingle()
 
     if (error) throw error
 
