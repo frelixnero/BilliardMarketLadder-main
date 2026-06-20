@@ -3,9 +3,17 @@
 @tailwind utilities;
 
 .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   display: inline-block;
   vertical-align: middle;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
 }
 
 .glass-card {
@@ -37,6 +45,16 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #494454;
 }
+
+/* Hide scrollbar for header */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 
 /* Auth Screen Custom Styles */
 .auth-input {

@@ -749,6 +749,7 @@ function App({ authUser, supabaseClient, onLogout }) {
   const [serverRole, setServerRole] = useState(null);
   const accountRole = serverRole || getStoredRole(authUser?.email) || authUser?.app_metadata?.role || authUser?.user_metadata?.role || "player";
   const [tab, setTab]       = useState("home");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [roleMode, setRoleMode] = useState(saved?.roleMode ?? (accountRole === "operator" ? "operator" : "player"));
   const [season, setSeason] = useState(saved?.season ?? 1);
   const [s1players, setS1Players]   = useState(saved?.s1players   ?? defaultPlayers());
@@ -1107,11 +1108,24 @@ function App({ authUser, supabaseClient, onLogout }) {
   };
   return (
     <div className="flex min-h-screen bg-background text-on-background font-sans">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[65] md:hidden backdrop-blur-sm transition-opacity" 
+          onClick={() => setMobileMenuOpen(false)}
+        ></div>
+      )}
+
       {/* Shared SideNavBar */}
-      <aside className="w-64 flex-shrink-0 sticky top-0 h-screen bg-surface-container-low border-r border-outline-variant flex flex-col py-lg px-md z-[60] overflow-y-auto">
-        <div className="mb-xl px-sm flex flex-col">
-          <span className="font-display-lg text-display-lg font-bold text-primary tracking-tighter">LM</span>
-          <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mt-xs">Elite Tier</p>
+      <aside className={`w-64 flex-shrink-0 fixed md:sticky top-0 h-screen bg-surface-container-low border-r border-outline-variant flex flex-col py-lg px-md z-[70] overflow-y-auto transition-transform transform ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
+        <div className="mb-xl px-sm flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="font-display-lg text-display-lg font-bold text-primary tracking-tighter">LM</span>
+            <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mt-xs">Elite Tier</p>
+          </div>
+          <button className="md:hidden text-on-surface-variant hover:text-on-surface" onClick={() => setMobileMenuOpen(false)}>
+            <span className="material-symbols-outlined">close</span>
+          </button>
         </div>
         <nav className="flex-1 flex flex-col space-y-xs">
           {TABS.map(t => {
@@ -1119,10 +1133,10 @@ function App({ authUser, supabaseClient, onLogout }) {
             return (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex items-center gap-md px-md py-sm rounded-xl font-medium transition-colors text-left ${
+                onClick={() => { setTab(t.id); setMobileMenuOpen(false); }}
+                className={`flex items-center gap-md px-md py-sm rounded-xl font-medium transition-all text-left ${
                   isActive
-                    ? "text-primary font-bold bg-surface-container-high border-r-2 border-primary"
+                    ? "text-on-primary-container bg-primary-container font-bold shadow-md shadow-primary-container/20"
                     : "text-on-surface-variant hover:bg-surface-container-high"
                 }`}
               >
@@ -1150,22 +1164,25 @@ function App({ authUser, supabaseClient, onLogout }) {
       </aside>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Shared TopNavBar */}
-        <header className="bg-background dark:bg-background sticky top-0 z-50 border-b border-outline-variant flex justify-between items-center px-margin-desktop py-md w-full">
-        <div className="flex items-center gap-xl">
+        <header className="bg-background dark:bg-background sticky top-0 z-50 border-b border-outline-variant flex flex-col sm:flex-row sm:justify-between sm:items-center px-margin-mobile md:px-margin-desktop py-sm md:py-md w-full gap-sm md:gap-xl">
+        <div className="flex items-center gap-md">
+          <button className="md:hidden text-on-surface flex-shrink-0" onClick={() => setMobileMenuOpen(true)}>
+            <span className="material-symbols-outlined text-[28px]">menu</span>
+          </button>
           <div className="flex items-center gap-sm">
-            <span className="material-symbols-outlined text-primary text-headline-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
+            <span className="material-symbols-outlined text-primary text-[28px] md:text-headline-lg hidden sm:block" style={{ fontVariationSettings: "'FILL' 1" }}>
               sports_billiards
             </span>
-            <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Market Ladder</h1>
+            <h1 className="text-title-md md:font-headline-lg md:text-headline-lg font-bold text-on-surface tracking-tight whitespace-nowrap">Market Ladder</h1>
           </div>
         </div>
-        <div className="flex items-center gap-lg">
+        <div className="flex items-center gap-sm md:gap-lg overflow-x-auto scrollbar-hide w-full sm:w-auto pb-1 sm:pb-0">
           {effectiveRole === "operator" && (
-            <div className="flex flex-col items-end mr-md">
+            <div className="flex flex-col items-end mr-xs md:mr-md flex-shrink-0">
               <span className="font-label-sm text-on-surface-variant uppercase text-[10px]">Net Profit</span>
-              <span className="font-title-md text-secondary text-title-md font-bold">{$$(money.netProfit)}</span>
+              <span className="text-[16px] md:text-title-md md:font-title-md text-secondary font-bold">{$$(money.netProfit)}</span>
             </div>
           )}
           <div className="h-10 w-[1px] bg-outline-variant"></div>
