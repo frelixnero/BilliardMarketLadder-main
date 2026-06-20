@@ -7,6 +7,7 @@ import {
   rateLimit,
   requireOperatorUser,
   requireEnv,
+  getUserRole,
 } from './_lib/security.js'
 
 const envCheck = requireEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'])
