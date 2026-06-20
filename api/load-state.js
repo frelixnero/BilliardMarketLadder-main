@@ -43,6 +43,7 @@ export default async function handler(req, res) {
     if (error) throw error
 
     const role = getUserRole(user)
+    console.log('[load-state] User:', user.email, 'Resolved Role:', role, 'Configured Operators:', Array.from(getConfiguredOperatorEmails()))
     let userState = null
     if (role === 'operator') {
       userState = data?.settings?.userDashboards?.[user.id] || null
