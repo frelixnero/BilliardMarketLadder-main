@@ -604,7 +604,7 @@ export function AuthShell() {
           password,
           options: {
             data: {
-              role: selectedRole === "operator" ? "player" : selectedRole,
+              role: selectedRole,
               requested_role: selectedRole,
             },
           },
