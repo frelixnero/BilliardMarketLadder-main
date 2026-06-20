@@ -1115,11 +1115,11 @@ function App({ authUser, supabaseClient, onLogout }) {
       <div style={{ background:"#0a0a18", borderBottom:`1px solid ${C.cardBorder}`, padding:"8px 20px", display:"flex", alignItems:"center", gap:10 }}>
         <span style={{ fontSize:12, color:C.gray, marginRight:4 }}>Active Season:</span>
         {[1,2,3].map(s => (
-          <button key={s} onClick={() => effectiveRole === "operator" && setSeason(s)} style={{
+          <button key={s} onClick={() => setSeason(s)} style={{
             background: season===s ? C.red : C.card,
             border:`2px solid ${season===s ? C.red : C.cardBorder}`,
             color:C.white, borderRadius:8, padding:"5px 18px",
-            cursor: effectiveRole === "operator" ? "pointer" : "default", opacity: effectiveRole === "operator" ? 1 : 0.85, fontFamily:"inherit", fontSize:13, fontWeight:700,
+            cursor: "pointer", opacity: 1, fontFamily:"inherit", fontSize:13, fontWeight:700,
           }}>Season {s}{s===3?' 🏆':''}</button>
         ))}
         <span style={{ fontSize:11, color:C.gray, marginLeft:8 }}>
