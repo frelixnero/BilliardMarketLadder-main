@@ -1113,6 +1113,7 @@ function App({ authUser, supabaseClient, onLogout }) {
     setS1Players, setS2Players, setS3Players,
     startStripeCheckout, checkoutBusyId,
     startPlayerStripeCheckout, playerCheckoutBusyId,
+    doublesTeams, setDoublesTeams, triplesTeams, setTriplesTeams,
     roleMode: effectiveRole,
     loadFromCloud, saveToCloud, cloudStatus, cloudBusy, setRoleMode, accountRole, supabaseClient,
   };
