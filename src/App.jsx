@@ -418,89 +418,73 @@ export function AuthShell() {
     return (
       <div style={{ ...heroBgStyle, color:C.white, padding:20 }}>
         <div style={{ width:"100%", maxWidth:440 }}>
-          <div style={{ textAlign:"center", marginBottom:28 }}>
-            <div style={{ fontSize:44, marginBottom:8 }}>🎱</div>
-            <div style={{ fontSize:22, fontWeight:900, letterSpacing:0.5 }}>BilliardsMarketLadder</div>
-            <div style={{ fontSize:13, color:C.gray, marginTop:4 }}>League Dashboard</div>
+          <div style={{ textAlign:"center", marginBottom:32 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 64, height: 64, borderRadius: "50%", background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.08)", fontSize: 32, marginBottom: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>🎱</div>
+            <div style={{ fontSize:24, fontWeight:900, letterSpacing:"0.06em", textTransform: "uppercase", color: C.gold, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>BilliardsMarketLadder</div>
+            <div style={{ fontSize:12, color:C.gray, marginTop:6, fontWeight: 500, letterSpacing: "0.02em" }}>League & Supporter Share Platform</div>
             {!supabaseClient && (
-              <div style={{ display:"inline-block", marginTop:10, background:"#1a1a00", border:`1px solid ${C.gold}`, borderRadius:20, padding:"3px 12px", fontSize:11, color:C.gold, fontWeight:700 }}>
-                Local mode only
+              <div style={{ display:"inline-block", marginTop:12, background:"rgba(245, 200, 66, 0.1)", border:`1px solid ${C.gold}`, borderRadius:20, padding:"4px 14px", fontSize:11, color:C.gold, fontWeight:700, letterSpacing: "0.02em" }}>
+                ⚡ Local mode only
               </div>
             )}
           </div>
 
-          <form onSubmit={submitAuth} style={{ background:"rgba(22,22,42,0.82)", border:`1px solid rgba(42,42,69,0.9)`, borderRadius:16, overflow:"hidden", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", boxShadow:"0 8px 48px rgba(0,0,0,0.6)" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", borderBottom:`1px solid ${C.cardBorder}` }}>
+          <form onSubmit={submitAuth} style={{ background:"rgba(22,22,42,0.85)", border:`1px solid rgba(42,42,69,0.9)`, borderRadius:16, overflow:"hidden", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", boxShadow:"0 16px 48px rgba(0,0,0,0.6)" }}>
+            <div style={{ display:"flex", background:"rgba(0,0,0,0.25)", padding: 6, margin: "20px 24px 0 24px", borderRadius: 8 }}>
               {[ ["login","Log in"], ["signup","Create account"] ].map(([id, label]) => (
-                <button key={id} type="button" onClick={() => switchMode(id)} style={{
-                  background: mode === id ? C.card : C.dimBg,
-                  border:"none", borderBottom: mode === id ? `2px solid ${C.red}` : "2px solid transparent",
-                  color: mode === id ? C.white : C.gray,
-                  padding:"14px 0", cursor:"pointer", fontFamily:"inherit",
-                  fontSize:14, fontWeight: mode === id ? 700 : 400,
-                }}>{label}</button>
+                <button key={id} type="button" onClick={() => switchMode(id)} className={`auth-tab-btn ${mode === id ? 'active' : ''}`}>{label}</button>
               ))}
             </div>
 
-            <div style={{ padding:24 }}>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontSize:12, color:C.gray, marginBottom:6, fontWeight:600 }}>Email address</label>
-                <input value={email} onChange={e => setEmail(e.target.value)} type="email" required autoComplete="email" style={{ ...selStyle, padding:"10px 12px" }} placeholder="you@example.com" />
+            <div style={{ padding:"24px 28px 28px 28px" }}>
+              <div style={{ marginBottom:18 }}>
+                <label style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.5)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700, marginBottom: 8, display: "block" }}>Email address</label>
+                <input value={email} onChange={e => setEmail(e.target.value)} type="email" required autoComplete="email" className="auth-input" placeholder="you@example.com" />
               </div>
 
-              {mode === "signup" && <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontSize:12, color:C.gray, marginBottom:6, fontWeight:600 }}>Dashboard role</label>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {mode === "signup" && <div style={{ marginBottom:18 }}>
+                <label style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.5)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700, marginBottom: 8, display: "block" }}>Dashboard role</label>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   {[ ["operator", "Operator"], ["player", "Player"] ].map(([id, label]) => (
-                    <button key={id} type="button" onClick={() => setSelectedRole(id)} style={{
-                      background: selectedRole === id ? C.red : C.dimBg,
-                      border:`1px solid ${selectedRole === id ? C.red : C.cardBorder}`,
-                      color:C.white,
-                      borderRadius:8,
-                      padding:"10px 12px",
-                      cursor:"pointer",
-                      fontFamily:"inherit",
-                      fontSize:13,
-                      fontWeight:700,
-                    }}>{label}</button>
+                    <button key={id} type="button" onClick={() => setSelectedRole(id)} className={`auth-button-role ${selectedRole === id ? 'active' : ''}`}>{label}</button>
                   ))}
                 </div>
               </div>}
 
-              <div style={{ marginBottom: mode === "signup" ? 14 : 20 }}>
-                <label style={{ display:"block", fontSize:12, color:C.gray, marginBottom:6, fontWeight:600 }}>Password</label>
+              <div style={{ marginBottom: mode === "signup" ? 18 : 24 }}>
+                <label style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.5)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700, marginBottom: 8, display: "block" }}>Password</label>
                 <div style={{ position:"relative" }}>
-                  <input value={password} onChange={e => setPassword(e.target.value)} type={showPassword ? "text" : "password"} required autoComplete={mode === "signup" ? "new-password" : "current-password"} style={{ ...selStyle, padding:"10px 40px 10px 12px" }} placeholder={mode === "signup" ? "Min. 8 characters" : "Your password"} />
-                  <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.gray, cursor:"pointer", fontSize:16, padding:0 }}>{showPassword ? "🙈" : "👁"}</button>
+                  <input value={password} onChange={e => setPassword(e.target.value)} type={showPassword ? "text" : "password"} required autoComplete={mode === "signup" ? "new-password" : "current-password"} className="auth-input" placeholder={mode === "signup" ? "Min. 8 characters" : "Your password"} style={{ paddingRight: 40 }} />
+                  <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.gray, cursor:"pointer", fontSize:16, padding:0 }}>{showPassword ? "🙈" : "👁"}</button>
                 </div>
                 {mode === "signup" && pwStrength && (
-                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
                     <div style={{ flex:1, height:3, borderRadius:2, background:C.cardBorder, overflow:"hidden" }}>
                       <div style={{ height:"100%", width: pwStrength === "weak" ? "33%" : pwStrength === "ok" ? "66%" : "100%", background:pwStrengthColor, transition:"width .3s,background .3s" }} />
                     </div>
-                    <span style={{ fontSize:11, color:pwStrengthColor, fontWeight:700 }}>{pwStrengthLabel}</span>
+                    <span style={{ fontSize:10, color:pwStrengthColor, fontWeight:700, textTransform: "uppercase", letterSpacing: "0.05em" }}>{pwStrengthLabel}</span>
                   </div>
                 )}
               </div>
 
               {mode === "signup" && (
-                <div style={{ marginBottom:20 }}>
-                  <label style={{ display:"block", fontSize:12, color:C.gray, marginBottom:6, fontWeight:600 }}>Confirm password</label>
-                  <input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type={showPassword ? "text" : "password"} required autoComplete="new-password" style={{ ...selStyle, padding:"10px 12px", borderColor: confirmPassword && confirmPassword !== password ? C.red : C.cardBorder }} placeholder="Repeat password" />
+                <div style={{ marginBottom:24 }}>
+                  <label style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.5)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700, marginBottom: 8, display: "block" }}>Confirm password</label>
+                  <input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type={showPassword ? "text" : "password"} required autoComplete="new-password" className="auth-input" placeholder="Repeat password" style={{ borderColor: confirmPassword && confirmPassword !== password ? C.red : undefined }} />
                   {confirmPassword && confirmPassword !== password && (
-                    <div style={{ fontSize:11, color:C.red, marginTop:4 }}>Passwords do not match</div>
+                    <div style={{ fontSize:11, color:C.red, marginTop:6 }}>Passwords do not match</div>
                   )}
                 </div>
               )}
 
               {authMsg.text && (
-                <div style={{ background: authMsg.isError ? "#2a0010" : "#002a16", border:`1px solid ${authMsg.isError ? C.red : C.green}`, borderRadius:8, padding:"10px 12px", fontSize:13, color: authMsg.isError ? C.red : C.green, marginBottom:16 }}>
+                <div style={{ background: authMsg.isError ? "#2a0010" : "#002a16", border:`1px solid ${authMsg.isError ? C.red : C.green}`, borderRadius:8, padding:"10px 12px", fontSize:13, color: authMsg.isError ? C.red : C.green, marginBottom:18 }}>
                   {authMsg.isError ? "⚠ " : "✓ "}{authMsg.text}
                 </div>
               )}
 
-              <button disabled={loading} type="submit" style={{ width:"100%", border:"none", borderRadius:8, padding:"12px", background: loading ? C.cardBorder : C.red, color:C.white, fontWeight:900, cursor: loading ? "not-allowed" : "pointer", fontFamily:"inherit", fontSize:15, letterSpacing:0.3 }}>
-                {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Log in →"}
+              <button disabled={loading} type="submit" className="auth-submit-btn">
+                {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Log in"}
               </button>
             </div>
           </form>

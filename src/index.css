@@ -31,3 +31,101 @@ input[type=number] {
   background: #2a2a45;
   border-radius: 3px;
 }
+
+/* Auth Screen Custom Styles */
+.auth-input {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f0f0ff;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.auth-input:focus {
+  border-color: #f5c842; /* C.gold */
+  box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.15);
+}
+
+.auth-button-role {
+  background: #12121f;
+  border: 1px solid #2a2a45;
+  color: #8888aa;
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.auth-button-role.active {
+  background: #e94560; /* C.red */
+  border-color: #e94560;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.35);
+}
+
+.auth-button-role:hover:not(.active) {
+  border-color: #8888aa;
+  color: #ffffff;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #8888aa;
+  padding: 10px 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.25s;
+}
+
+.auth-tab-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #f0f0ff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.auth-submit-btn {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  padding: 14px;
+  background: #e94560; /* C.red */
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(233, 69, 96, 0.25);
+}
+
+.auth-submit-btn:hover {
+  background: #f05a74;
+  box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+}
+
+.auth-submit-btn:active {
+  transform: translateY(1px);
+}
+
+.auth-submit-btn:disabled {
+  background: #2a2a45;
+  color: #8888aa;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
