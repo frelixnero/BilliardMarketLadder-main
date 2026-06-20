@@ -834,6 +834,9 @@ function App({ authUser, supabaseClient, onLogout }) {
       if (!response.ok || data.error) throw new Error(data.error || "Cloud load failed");
       if (data.role) {
         setServerRole(data.role);
+        if (data.role === "operator") {
+          setRoleMode("operator");
+        }
       }
       if (!data.dashboard) {
         setCloudStatus("No cloud snapshot found.");

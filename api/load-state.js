@@ -57,6 +57,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       dashboard: userState?.dashboard || null,
       updatedAt: userState?.updatedAt || data?.updated_at || null,
+      role,
       requestId,
     })
   } catch (err) {
