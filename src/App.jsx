@@ -2378,13 +2378,14 @@ function StandingsView({ standings, s1standings, s2standings, s3standings, seaso
   );
 }
 // ─── PARTICIPATION ───────────────────────────────────────────────────────────
-function ParticipationView({ standings, s1standings, s2standings, supporters, playoffs, money, season }) {
+function ParticipationView({ standings, s1standings, s2standings, s3standings, supporters, playoffs, money, season }) {
   const getPlayerShareCut = (name, pool) => {
+    if (!s2standings) return 0;
     const idx = s2standings.findIndex(s=>s.name===name);
     const backerPayout = idx===0 ? Math.round(pool*0.70) : idx===1 ? Math.round(pool*0.20) : idx===2 ? Math.round(pool*0.10) : 0;
     return Math.round(backerPayout * PLAYER_SHARE_CUT);
   };
-  const renderTable = (stnd, label) => (
+  const renderTable = (stnd = [], label) => (
     <Card title={label} icon="🎱" borderColor={C.blue}>
       <div style={{ display:"grid", gridTemplateColumns:"30px 1fr 80px 80px 80px 80px", gap:8, padding:"8px 0", borderBottom:`2px solid ${C.cardBorder}`, marginBottom:4 }}>
         {["#","Player","Rank Prize","Share Cut","Total",""].map(h=>(
