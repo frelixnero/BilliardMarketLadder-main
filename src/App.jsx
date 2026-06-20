@@ -1106,9 +1106,9 @@ function App({ authUser, supabaseClient, onLogout }) {
     loadFromCloud, saveToCloud, cloudStatus, cloudBusy, setRoleMode, accountRole, supabaseClient,
   };
   return (
-    <div className="bg-background text-on-background min-h-screen font-sans">
+    <div className="flex min-h-screen bg-background text-on-background font-sans">
       {/* Shared SideNavBar */}
-      <aside className="bg-surface-container-low h-screen w-64 fixed left-0 top-0 border-r border-outline-variant flex flex-col py-lg px-md z-[60] overflow-y-auto">
+      <aside className="w-64 flex-shrink-0 sticky top-0 h-screen bg-surface-container-low border-r border-outline-variant flex flex-col py-lg px-md z-[60] overflow-y-auto">
         <div className="mb-xl px-sm flex flex-col">
           <span className="font-display-lg text-display-lg font-bold text-primary tracking-tighter">LM</span>
           <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mt-xs">Elite Tier</p>
@@ -1149,8 +1149,10 @@ function App({ authUser, supabaseClient, onLogout }) {
         </div>
       </aside>
 
-      {/* Shared TopNavBar */}
-      <header className="bg-background dark:bg-background docked full-width top-0 sticky z-50 border-b border-outline-variant flex justify-between items-center w-full px-margin-desktop py-md pl-[288px]">
+      {/* Main Content Wrapper */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Shared TopNavBar */}
+        <header className="bg-background dark:bg-background sticky top-0 z-50 border-b border-outline-variant flex justify-between items-center px-margin-desktop py-md w-full">
         <div className="flex items-center gap-xl">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary text-headline-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1215,14 +1217,14 @@ function App({ authUser, supabaseClient, onLogout }) {
 
       {/* Cloud Status Sub-banner */}
       {effectiveRole === "operator" && cloudStatus && (
-        <div className="bg-surface-container text-secondary-fixed-dim text-xs py-sm px-margin-desktop pl-[288px] border-b border-outline-variant/40 flex items-center gap-xs">
+        <div className="bg-surface-container text-secondary-fixed-dim text-xs py-sm px-margin-desktop border-b border-outline-variant/40 flex items-center gap-xs">
           <span className="material-symbols-outlined text-[16px]">info</span>
           <span>{cloudStatus}</span>
         </div>
       )}
 
       {/* Global Season Selector & Info banner */}
-      <div className="bg-surface-container-low text-xs py-sm px-margin-desktop pl-[288px] border-b border-outline-variant/40 flex items-center gap-md flex-wrap justify-between">
+      <div className="bg-surface-container-low text-xs py-sm px-margin-desktop border-b border-outline-variant/40 flex items-center gap-md flex-wrap justify-between">
         <div className="flex items-center gap-sm">
           <span className="text-on-surface-variant font-bold">Active Season:</span>
           <div className="flex gap-xs">
@@ -1254,7 +1256,8 @@ function App({ authUser, supabaseClient, onLogout }) {
       </div>
 
       {/* Main Content Canvas */}
-      <main className="pl-[288px] p-margin-desktop max-w-[1440px] w-full min-h-[calc(100vh-140px)]">
+      <main className="flex-1 p-margin-desktop w-full overflow-x-hidden">
+        <div className="max-w-[1440px] mx-auto w-full">
         {tab === "home" && <HomeView {...views} />}
         {tab === "payouts" && (
           <PayoutsView
@@ -1282,7 +1285,9 @@ function App({ authUser, supabaseClient, onLogout }) {
         {tab === "bars" && <BarsView {...views} />}
         {tab === "rules" && <RulesView />}
         {tab === "manual" && <ManualView money={views.money} season={views.season} bars={views.bars} />}
+        </div>
       </main>
+      </div>
     </div>
   );
 }
