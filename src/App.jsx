@@ -2,6 +2,28 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
+const getMaterialIcon = (id) => {
+  const mapping = {
+    home: "dashboard",
+    payouts: "payments",
+    players: "groups",
+    matches: "sports_billiards",
+    inhouse: "stadium",
+    standings: "leaderboard",
+    shares: "handshake",
+    playoffs: "emoji_events",
+    teams: "diversity_3",
+    bars: "local_bar",
+    rules: "menu_book",
+    manual: "book",
+    participation: "assignment_turned_in",
+    money: "paid",
+    pnl: "analytics",
+    playerboard: "tv"
+  };
+  return mapping[id] || "circle";
+};
+
 const BML_SUPABASE_URL = "https://vhsxjfzhwrxujpsvrutx.supabase.co";
 const BML_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc3hqZnpod3J4dWpwc3ZydXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NjQzOTEsImV4cCI6MjA5NzE0MDM5MX0.uTSkYFb_IkVIPO4uIZniOph5uEwqcizHfe4mvBbIXWw";
 
@@ -1081,90 +1103,186 @@ function App({ authUser, supabaseClient, onLogout }) {
     startStripeCheckout, checkoutBusyId,
     startPlayerStripeCheckout, playerCheckoutBusyId,
     roleMode: effectiveRole,
+    loadFromCloud, saveToCloud, cloudStatus, cloudBusy, setRoleMode, accountRole, supabaseClient,
   };
   return (
-    <div style={{ fontFamily:"'Segoe UI',Arial,sans-serif", background:C.bg, minHeight:"100vh", color:C.white }}>
-      <div style={{ background:C.card, borderBottom:`3px solid ${C.red}`, padding:"12px 20px", display:"flex", alignItems:"center", gap:12 }}>
-        <span style={{ display: "inline-flex", alignItems: "center" }}>{getIconSvg("⚡", C.gold, 32)}</span>
-        <div>
-          <div style={{ fontSize:11, color:C.red, fontWeight:800, letterSpacing:3, textTransform:"uppercase" }}>Action Ladder</div>
-          <div style={{ fontSize:20, fontWeight:900, color:C.white, lineHeight:1 }}>BilliardsMarketLadder</div>
+    <div className="bg-background text-on-background min-h-screen font-sans">
+      {/* Shared SideNavBar */}
+      <aside className="bg-surface-container-low h-screen w-64 fixed left-0 top-0 border-r border-outline-variant flex flex-col py-lg px-md z-[60] overflow-y-auto">
+        <div className="mb-xl px-sm flex flex-col">
+          <span className="font-display-lg text-display-lg font-bold text-primary tracking-tighter">LM</span>
+          <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mt-xs">Elite Tier</p>
         </div>
-        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:16 }}>
-          {effectiveRole === "operator" && (
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:11, color:C.gray }}>Net profit</div>
-              <div style={{ fontSize:22, fontWeight:900, color:C.green }}>{$$(money.netProfit)}</div>
+        <nav className="flex-1 flex flex-col space-y-xs">
+          {TABS.map(t => {
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-md px-md py-sm rounded-xl font-medium transition-colors text-left ${
+                  isActive
+                    ? "text-primary font-bold bg-surface-container-high border-r-2 border-primary"
+                    : "text-on-surface-variant hover:bg-surface-container-high"
+                }`}
+              >
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: `'FILL' ${isActive ? 1 : 0}` }}>
+                  {getMaterialIcon(t.id)}
+                </span>
+                <span className="font-title-md text-title-md">{t.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="mt-auto pt-lg border-t border-outline-variant/50">
+          <div className="flex items-center gap-md px-md py-xs">
+            <div className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border border-outline flex items-center justify-center text-primary font-bold">
+              {authUser?.email ? authUser.email.slice(0, 2).toUpperCase() : "OP"}
             </div>
-          )}
-          <div style={{ textAlign:"right" }}>
-            {lastSaved && <div style={{ fontSize:10, color:C.green, marginBottom:2 }}>💾 Saved {lastSaved}</div>}
-            <div style={{ fontSize:10, color:C.gray, marginBottom:4 }}>{authUser?.email}</div>
-            <div style={{ display:"flex", gap:6, justifyContent:"flex-end", flexWrap:"wrap" }}>
-              {accountRole === "operator" && <button onClick={() => setRoleMode(roleMode === "operator" ? "player" : "operator")} style={{ background: roleMode === "operator" ? "#00162a" : "#001a10", border:`1px solid ${roleMode === "operator" ? C.blue : C.green}`, color: roleMode === "operator" ? C.blue : C.green, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>{roleMode === "operator" ? "Switch to Player" : "Switch to Operator"}</button>}
-              {effectiveRole === "operator" && <button onClick={loadFromCloud} disabled={cloudBusy || !supabaseClient} style={{ background:"#00162a", border:`1px solid ${C.blue}`, color:C.blue, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, opacity: !supabaseClient ? 0.5 : 1 }}>Load Cloud</button>}
-              {effectiveRole === "operator" && <button onClick={saveToCloud} disabled={cloudBusy || !supabaseClient} style={{ background:"#001a10", border:`1px solid ${C.green}`, color:C.green, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, opacity: !supabaseClient ? 0.5 : 1 }}>Save Cloud</button>}
-              <button onClick={onLogout} style={{ background:"#2a2a45", border:`1px solid ${C.cardBorder}`, color:C.white, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>Logout</button>
-              {effectiveRole === "operator" && <button onClick={resetAll} style={{ background:"#2a0010", border:`1px solid ${C.red}`, color:C.red, borderRadius:6, padding:"4px 8px", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700 }}>Reset</button>}
+            <div className="overflow-hidden">
+              <p className="font-label-sm text-on-surface truncate font-bold">
+                {effectiveRole === "operator" ? "Admin Operator" : "Player Member"}
+              </p>
+              <p className="text-[10px] text-on-surface-variant truncate">{authUser?.email}</p>
             </div>
           </div>
         </div>
-      </div>
+      </aside>
+
+      {/* Shared TopNavBar */}
+      <header className="bg-background dark:bg-background docked full-width top-0 sticky z-50 border-b border-outline-variant flex justify-between items-center w-full px-margin-desktop py-md pl-[288px]">
+        <div className="flex items-center gap-xl">
+          <div className="flex items-center gap-sm">
+            <span className="material-symbols-outlined text-primary text-headline-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
+              sports_billiards
+            </span>
+            <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Market Ladder</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-lg">
+          {effectiveRole === "operator" && (
+            <div className="flex flex-col items-end mr-md">
+              <span className="font-label-sm text-on-surface-variant uppercase text-[10px]">Net Profit</span>
+              <span className="font-title-md text-secondary text-title-md font-bold">{$$(money.netProfit)}</span>
+            </div>
+          )}
+          <div className="h-10 w-[1px] bg-outline-variant"></div>
+          
+          <div className="flex items-center gap-xs ml-md flex-wrap">
+            {accountRole === "operator" && (
+              <button
+                onClick={() => setRoleMode(roleMode === "operator" ? "player" : "operator")}
+                className="px-md py-sm border border-outline text-on-surface rounded-lg font-label-sm hover:bg-surface-container-high transition-colors text-xs font-bold"
+              >
+                {roleMode === "operator" ? "Switch to Player" : "Switch to Operator"}
+              </button>
+            )}
+            {effectiveRole === "operator" && (
+              <button
+                onClick={loadFromCloud}
+                disabled={cloudBusy || !supabaseClient}
+                className="px-md py-sm bg-surface-container-high border border-outline-variant text-on-surface rounded-lg font-label-sm hover:text-primary transition-all disabled:opacity-50 text-xs font-bold"
+              >
+                Load Cloud
+              </button>
+            )}
+            {effectiveRole === "operator" && (
+              <button
+                onClick={saveToCloud}
+                disabled={cloudBusy || !supabaseClient}
+                className="px-md py-sm bg-tertiary-container text-on-tertiary-container rounded-lg font-label-sm hover:brightness-110 transition-all disabled:opacity-50 text-xs font-bold"
+              >
+                Save Cloud
+              </button>
+            )}
+            {effectiveRole === "operator" && (
+              <button
+                onClick={resetAll}
+                className="px-md py-sm bg-error/20 border border-error/50 text-error rounded-lg font-label-sm hover:bg-error/30 transition-colors text-xs font-bold"
+              >
+                Reset
+              </button>
+            )}
+            <button
+              onClick={onLogout}
+              className="px-md py-sm bg-error text-on-error rounded-lg font-label-sm hover:opacity-90 transition-opacity text-xs font-bold"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Cloud Status Sub-banner */}
       {effectiveRole === "operator" && cloudStatus && (
-        <div style={{ background:"#0a0a18", borderBottom:`1px solid ${C.cardBorder}`, padding:"6px 20px", fontSize:12, color:C.gold }}>
-          {cloudStatus}
+        <div className="bg-surface-container text-secondary-fixed-dim text-xs py-sm px-margin-desktop pl-[288px] border-b border-outline-variant/40 flex items-center gap-xs">
+          <span className="material-symbols-outlined text-[16px]">info</span>
+          <span>{cloudStatus}</span>
         </div>
       )}
-      <div style={{ background:"#0a0a18", borderBottom:`1px solid ${C.cardBorder}`, padding:"8px 20px", display:"flex", alignItems:"center", gap:10 }}>
-        <span style={{ fontSize:12, color:C.gray, marginRight:4 }}>Active Season:</span>
-        {[1,2,3].map(s => (
-          <button key={s} onClick={() => setSeason(s)} style={{
-            background: season===s ? C.red : C.card,
-            border:`2px solid ${season===s ? C.red : C.cardBorder}`,
-            color:C.white, borderRadius:8, padding:"5px 18px",
-            cursor: "pointer", opacity: 1, fontFamily:"inherit", fontSize:13, fontWeight:700,
-          }}>Season {s}{s===3?' 🏆':''}</button>
-        ))}
-        <span style={{ fontSize:11, color:C.gray, marginLeft:8 }}>
-          {season===1 ? "🟡 S1 — vol ×1.0 · lower prizes · S1 players get S2/S3 priority" : season===2 ? "🟢 S2 — vol ×1.5 · bigger prizes · S1 alumni get priority sign-up" : "🔴 S3 PLAYOFFS — vol ×2.5 · biggest prizes · top S1+S2 players compete"}
-        </span>
-        <span style={{ marginLeft:"auto", fontSize:11, color: effectiveRole === "operator" ? C.blue : C.green, fontWeight:700 }}>
-          {effectiveRole === "operator" ? "Operator dashboard" : "Player dashboard"}
-        </span>
+
+      {/* Global Season Selector & Info banner */}
+      <div className="bg-surface-container-low text-xs py-sm px-margin-desktop pl-[288px] border-b border-outline-variant/40 flex items-center gap-md flex-wrap justify-between">
+        <div className="flex items-center gap-sm">
+          <span className="text-on-surface-variant font-bold">Active Season:</span>
+          <div className="flex gap-xs">
+            {[1, 2, 3].map(s => (
+              <button
+                key={s}
+                onClick={() => setSeason(s)}
+                className={`px-md py-xs rounded-full font-bold transition-all text-xs ${
+                  season === s
+                    ? "bg-primary text-on-primary shadow-md"
+                    : "bg-surface-container-high text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Season {s}{s === 3 ? " 🏆" : ""}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="text-on-surface-variant italic">
+          {season === 1
+            ? "🟡 S1 — vol ×1.0 · lower prizes · S1 players get S2/S3 priority"
+            : season === 2
+            ? "🟢 S2 — vol ×1.5 · bigger prizes · S1 alumni get priority sign-up"
+            : "🔴 S3 PLAYOFFS — vol ×2.5 · biggest prizes · top S1+S2 players compete"}
+        </div>
+        <div className={`font-bold uppercase text-[10px] tracking-wider ${effectiveRole === "operator" ? "text-primary" : "text-tertiary"}`}>
+          {effectiveRole === "operator" ? "Operator View" : "Player View"}
+        </div>
       </div>
-      <div style={{ display:"flex", overflowX:"auto", background:C.dimBg, borderBottom:`1px solid ${C.cardBorder}` }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex:"0 0 auto", background:"none", border:"none",
-            borderBottom:`3px solid ${tab===t.id ? C.red : "transparent"}`,
-            color:tab===t.id ? C.white : C.gray,
-            padding:"10px 14px", cursor:"pointer", fontFamily:"inherit",
-            fontSize:11, fontWeight:tab===t.id?700:400,
-            display:"flex", flexDirection:"column", alignItems:"center", gap:4,
-          }}>
-            <span style={{ display:"inline-flex", alignItems:"center", minHeight: 20 }}>{getIconSvg(t.id, tab===t.id ? C.red : C.gray, 18)}</span>
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </div>
-      <div style={{ padding:"20px", maxWidth:980, margin:"0 auto" }}>
-        {tab==="home"        && <HomeView {...views} />}
-        {tab==="payouts"     && <PayoutsView supporters={views.supporters} s1standings={views.s1standings} s2standings={views.s2standings} s1players={views.s1players} s2players={views.s2players} money={views.money} bars={views.bars} playoffs={views.playoffs} />}
-        {tab==="players"     && <PlayersView {...views} />}
-        {tab==="matches"     && <MatchesView {...views} />}
-        {tab==="inhouse"     && <InHouseView {...views} />}
-        {tab==="standings"   && <StandingsView {...views} />}
-        {tab==="shares"      && <SharesView {...views} />}
-        {tab==="playoffs"    && <PlayoffsView {...views} />}
-        {tab==="participation" && <ParticipationView {...views} />}
-        {tab==="money"       && <MoneyView {...views} />}
-        {tab==="pnl"         && <PnLView {...views} />}
-        {tab==="playerboard" && <PlayerBoardView {...views} />}
-        {tab==="teams"       && <TeamsView {...views} />}
-        {tab==="bars"        && <BarsView {...views} />}
-        {tab==="rules"       && <RulesView />}
-        {tab==="manual"      && <ManualView money={views.money} season={views.season} bars={views.bars} />}
-      </div>
+
+      {/* Main Content Canvas */}
+      <main className="pl-[288px] p-margin-desktop max-w-[1440px] w-full min-h-[calc(100vh-140px)]">
+        {tab === "home" && <HomeView {...views} />}
+        {tab === "payouts" && (
+          <PayoutsView
+            supporters={views.supporters}
+            s1standings={views.s1standings}
+            s2standings={views.s2standings}
+            s1players={views.s1players}
+            s2players={views.s2players}
+            money={views.money}
+            bars={views.bars}
+            playoffs={views.playoffs}
+          />
+        )}
+        {tab === "players" && <PlayersView {...views} />}
+        {tab === "matches" && <MatchesView {...views} />}
+        {tab === "inhouse" && <InHouseView {...views} />}
+        {tab === "standings" && <StandingsView {...views} />}
+        {tab === "shares" && <SharesView {...views} />}
+        {tab === "playoffs" && <PlayoffsView {...views} />}
+        {tab === "participation" && <ParticipationView {...views} />}
+        {tab === "money" && <MoneyView {...views} />}
+        {tab === "pnl" && <PnLView {...views} />}
+        {tab === "playerboard" && <PlayerBoardView {...views} />}
+        {tab === "teams" && <TeamsView {...views} />}
+        {tab === "bars" && <BarsView {...views} />}
+        {tab === "rules" && <RulesView />}
+        {tab === "manual" && <ManualView money={views.money} season={views.season} bars={views.bars} />}
+      </main>
     </div>
   );
 }
@@ -1760,143 +1878,462 @@ function TeamsView({ doublesTeams, setDoublesTeams, triplesTeams, setTriplesTeam
 }
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
+// ─── SHARED UI ────────────────────────────────────────────────────────────────
 function BigCard({ icon, title, value, sub, color, onClick }) {
   return (
-    <div onClick={onClick} style={{ background:C.card, border:`1px solid ${C.cardBorder}`, borderTop:`4px solid ${color||C.green}`, borderRadius:12, padding:18, cursor:onClick?"pointer":"default" }}>
-      <div style={{ fontSize:26, marginBottom:4, display:"flex", alignItems:"center", minHeight:28 }}>{getIconSvg(icon, color||C.green, 24)}</div>
-      <div style={{ fontSize:11, color:C.gray, textTransform:"uppercase", letterSpacing:1, marginBottom:2 }}>{title}</div>
-      <div style={{ fontSize:24, fontWeight:900, color:color||C.green }}>{value}</div>
-      {sub && <div style={{ fontSize:11, color:C.gray, marginTop:3 }}>{sub}</div>}
+    <div
+      onClick={onClick}
+      className={`glass-card rounded-xl p-lg shadow-md border border-outline-variant flex-1 transition-all ${
+        onClick ? "cursor-pointer hover:border-primary/50 hover:translate-y-[-2px]" : "cursor-default"
+      }`}
+    >
+      <div className="text-[28px] mb-sm flex items-center text-primary">
+        <span className="material-symbols-outlined fill-current">
+          {getMaterialIcon(icon)}
+        </span>
+      </div>
+      <div className="font-label-sm text-on-surface-variant uppercase tracking-wider text-[11px] mb-xs">{title}</div>
+      <div className="font-headline-lg text-on-surface font-black text-2xl">{value}</div>
+      {sub && <div className="text-[12px] text-on-surface-variant mt-sm">{sub}</div>}
     </div>
   );
 }
 function Card({ children, title, icon, borderColor }) {
   return (
-    <div style={{ background:C.card, border:`1px solid ${borderColor||C.cardBorder}`, borderRadius:10, overflow:"hidden", marginBottom:16 }}>
+    <div className="glass-card rounded-xl overflow-hidden mb-md shadow-lg border border-outline-variant">
       {title && (
-        <div style={{ background:C.dimBg, padding:"10px 16px", fontSize:13, fontWeight:700, borderBottom:`1px solid ${borderColor||C.cardBorder}`, display:"flex", alignItems:"center", gap:8 }}>
-          {icon && <span style={{ display:"inline-flex", alignItems:"center" }}>{getIconSvg(icon, borderColor||C.gray, 15)}</span>}{title}
+        <div className="bg-surface-container/50 px-md py-sm text-sm font-bold border-b border-outline-variant flex items-center gap-sm">
+          {icon && (
+            <span className="material-symbols-outlined text-primary text-body-md">
+              {getMaterialIcon(icon)}
+            </span>
+          )}
+          <span className="text-on-surface">{title}</span>
         </div>
       )}
-      <div style={{ padding:16 }}>{children}</div>
+      <div className="p-md text-on-surface-variant">{children}</div>
     </div>
   );
 }
 function PageTitle({ icon, title, desc }) {
   return (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:26, fontWeight:900, display:"flex", alignItems:"center", gap:10 }}>
-        <span style={{ display:"inline-flex", alignItems:"center" }}>{getIconSvg(icon, C.gold, 26)}</span>
+    <div className="mb-lg">
+      <div className="font-headline-lg text-headline-lg font-bold text-on-surface flex items-center gap-sm">
+        <span className="material-symbols-outlined text-primary text-[32px] fill-current">
+          {getMaterialIcon(icon)}
+        </span>
         <span>{title}</span>
       </div>
-      {desc && <div style={{ color:C.gray, fontSize:14, marginTop:6 }}>{desc}</div>}
+      {desc && <div className="text-body-md text-on-surface-variant mt-xs text-sm">{desc}</div>}
     </div>
   );
 }
 function Tip({ children, color }) {
   return (
-    <div style={{ background: color ? color+"22" : "#1a1a35", border:`1px solid ${color||"#3333aa"}`, borderRadius:8, padding:"10px 14px", fontSize:13, color:color||"#9999ee", marginBottom:16, display:"flex", gap:10, alignItems:"center" }}>
-      <span style={{ display:"inline-flex", alignItems:"center" }}>{getIconSvg("💡", color||"#9999ee", 16)}</span>
+    <div className="glass-card border border-outline-variant/60 rounded-xl p-md text-sm text-on-surface-variant mb-md flex gap-sm items-center">
+      <span className="material-symbols-outlined text-secondary font-bold">lightbulb</span>
       <span>{children}</span>
     </div>
   );
 }
 function MRow({ label, value, color, big, indent }) {
   return (
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:big?"11px 0":"7px 0", borderBottom:`1px solid ${C.cardBorder}`, paddingLeft:indent?18:0 }}>
-      <span style={{ fontSize:big?14:13, color:big?C.white:C.gray }}>{label}</span>
-      <span style={{ fontSize:big?17:14, fontWeight:big?900:600, color:color||C.white }}>{value}</span>
+    <div className={`flex justify-between items-center border-b border-outline-variant/30 ${
+      big ? "py-md" : "py-sm"
+    } ${indent ? "pl-lg" : ""}`}>
+      <span className={`text-sm ${big ? "text-on-surface font-bold" : "text-on-surface-variant"}`}>{label}</span>
+      <span className={`text-sm font-bold ${color ? "" : "text-on-surface"}`} style={{ color: color }}>{value}</span>
     </div>
   );
 }
 function CheckBox({ checked, onChange, label, color }) {
   return (
-    <button onClick={() => onChange(!checked)} style={{
-      background:checked?(color||C.green)+"22":"#1a1a2e",
-      border:`2px solid ${checked?(color||C.green):"#3333aa"}`,
-      borderRadius:6, color:checked?(color||C.green):C.gray,
-      padding:"5px 10px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, minWidth:70,
-    }}>{label}</button>
+    <button
+      onClick={() => onChange(!checked)}
+      className={`px-md py-xs rounded-lg font-bold transition-all text-xs border ${
+        checked
+          ? "bg-primary/20 border-primary text-primary shadow-sm"
+          : "bg-surface-container border-outline-variant text-on-surface-variant hover:text-on-surface"
+      }`}
+    >
+      {label} {checked ? "✓" : ""}
+    </button>
   );
 }
-const btnSm = { background:"#2a2a45", border:"none", color:C.white, width:26, height:26, borderRadius:6, cursor:"pointer", fontSize:16, fontWeight:700, fontFamily:"inherit" };
-const selStyle = { background:C.dimBg, border:`1px solid ${C.cardBorder}`, color:C.white, borderRadius:6, padding:"8px 10px", fontFamily:"inherit", fontSize:14, width:"100%", outline:"none" };
-const textInp = { background:"transparent", border:"none", borderBottom:`1px solid ${C.cardBorder}`, color:C.white, fontSize:14, padding:"4px 6px", fontFamily:"inherit", outline:"none", width:"100%" };
+const btnSm = { background:"#2d3449", border:"none", color:"#dae2fd", width:26, height:26, borderRadius:6, cursor:"pointer", fontSize:16, fontWeight:700, fontFamily:"inherit" };
+const selStyle = {
+  background: "#171f33", // surface-container
+  border: "1px solid #494454", // outline-variant
+  color: "#dae2fd", // on-surface
+  borderRadius: "8px",
+  padding: "8px 12px",
+  fontFamily: "inherit",
+  fontSize: "14px",
+  width: "100%",
+  outline: "none",
+  transition: "all 0.2s"
+};
+const textInp = {
+  background: "transparent",
+  border: "none",
+  borderBottom: "2px solid #494454", // outline-variant
+  color: "#dae2fd", // on-surface
+  fontSize: "14px",
+  padding: "6px 8px",
+  fontFamily: "inherit",
+  outline: "none",
+  width: "100%",
+  transition: "all 0.2s"
+};
 // ─── HOME ─────────────────────────────────────────────────────────────────────
-function HomeView({ money, standings, s1standings, s2standings, season, setSeason, setTab, players }) {
+function HomeView({
+  money,
+  standings,
+  s1standings,
+  s2standings,
+  season,
+  setSeason,
+  setTab,
+  players,
+  loadFromCloud,
+  saveToCloud,
+  cloudStatus,
+  cloudBusy,
+  roleMode,
+  setRoleMode,
+  accountRole,
+  supabaseClient
+}) {
+  const topThree = standings.slice(0, 3);
+  
+  // Format currency helper
+  const $$ = (n) => {
+    if (!n && n !== 0) return "$0";
+    const abs = Math.abs(n);
+    const s = abs % 1 === 0 ? abs.toLocaleString()
+      : abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (n < 0 ? "–$" : "$") + s;
+  };
+
   return (
-    <div>
-      <div style={{ textAlign:"center", padding:"16px 0 24px" }}>
-        <div style={{ fontSize:48 }}>🎱</div>
-        <div style={{ fontSize:26, fontWeight:900 }}>BilliardsMarketLadder</div>
-        <div style={{ fontSize:15, color:C.gray, marginTop:6 }}>3 seasons · 4 game types · Per-bar live leaderboards · Shares $35–$150</div>
-      </div>
-      <Card title="How the 3-Season League Works" icon="📋" borderColor={C.blue}>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-          <div style={{ background:C.dimBg, borderRadius:8, padding:14, border:`1px solid ${C.gold}` }}>
-            <div style={{ fontSize:13, fontWeight:900, color:C.gold, marginBottom:8 }}>📅 SEASON 1 — Weeks 1–8 (vol ×1.0)</div>
-            <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>
-              • Lower prizes: 1st $750 · 2nd $350 · 3rd $150<br/>
-              • Shares: $35 (unranked) → $150 (#1)<br/>
-              • 🔑 S1 alumni get FIRST PICK for S2 &amp; S3<br/>
-              • 1st place = FREE S3 entry · 2nd = $100 S3 entry
+    <div className="space-y-xl">
+      {/* Hero Header */}
+      <section className="relative rounded-xl overflow-hidden py-xl px-xl flex flex-col items-center text-center border border-outline-variant shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-surface-container-low to-background -z-10 opacity-50"></div>
+        <div className="w-24 h-24 bg-surface-container-high rounded-full flex items-center justify-center border-4 border-primary shadow-xl mb-lg group hover:scale-105 transition-transform duration-500">
+          <span className="material-symbols-outlined text-[48px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>filter_8</span>
+        </div>
+        <h2 className="font-display-lg text-display-lg text-on-surface tracking-tighter mb-sm">Billiards Market Ladder</h2>
+        <div className="flex flex-wrap justify-center gap-xl">
+          <div className="flex items-center gap-xs text-on-surface-variant">
+            <span className="material-symbols-outlined text-body-md">calendar_month</span>
+            <span className="font-label-sm">3 Seasons</span>
+          </div>
+          <div className="flex items-center gap-xs text-on-surface-variant">
+            <span className="material-symbols-outlined text-body-md">sports_golf</span>
+            <span className="font-label-sm">4 Game Types</span>
+          </div>
+          <div className="flex items-center gap-xs text-on-surface-variant">
+            <span className="material-symbols-outlined text-body-md">location_on</span>
+            <span className="font-label-sm">Per-bar leaderboards</span>
+          </div>
+          <div className="flex items-center gap-xs text-secondary">
+            <span className="material-symbols-outlined text-body-md">payments</span>
+            <span className="font-label-sm font-bold">Shares $35–$150</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Bar & Cloud Actions */}
+      <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-lg bg-surface-container p-md rounded-xl border border-outline-variant">
+        <div className="flex items-center gap-md flex-wrap">
+          <span className="font-label-sm text-on-surface-variant">Cloud Snapshot:</span>
+          {cloudStatus ? (
+            <span className="text-secondary font-bold font-label-sm px-sm py-xs bg-surface-container-high rounded">{cloudStatus}</span>
+          ) : (
+            <span className="text-error font-bold font-label-sm px-sm py-xs bg-error-container rounded">No snapshot loaded.</span>
+          )}
+          <div className="flex gap-xs ml-md">
+            <button
+              onClick={loadFromCloud}
+              disabled={cloudBusy || !supabaseClient}
+              className="flex items-center gap-xs px-md py-sm bg-surface-container-high border border-outline-variant rounded-lg font-label-sm hover:text-primary transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-body-md">cloud_download</span> Load Cloud
+            </button>
+            <button
+              onClick={saveToCloud}
+              disabled={cloudBusy || !supabaseClient}
+              className="flex items-center gap-xs px-md py-sm bg-tertiary-container text-on-tertiary-container rounded-lg font-label-sm hover:brightness-110 transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-body-md">cloud_upload</span> Save Cloud
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-md">
+          {accountRole === "operator" && (
+            <>
+              <button
+                onClick={() => setRoleMode(roleMode === "operator" ? "player" : "operator")}
+                className="flex items-center gap-xs px-md py-sm bg-primary-container text-on-primary-container rounded-lg font-bold font-label-sm hover:scale-[1.02] transition-transform"
+              >
+                <span className="material-symbols-outlined text-body-md">admin_panel_settings</span>
+                {roleMode === "operator" ? "Operator dashboard" : "Player dashboard"}
+              </button>
+              <div className="h-6 w-[1px] bg-outline-variant"></div>
+              <button
+                onClick={() => setRoleMode(roleMode === "operator" ? "player" : "operator")}
+                className="px-md py-sm text-primary font-bold font-label-sm border border-primary rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-all"
+              >
+                {roleMode === "operator" ? "Switch to Player" : "Switch to Operator"}
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Active Season Selection */}
+      <section className="mb-xl">
+        <div className="flex items-center justify-between mb-lg">
+          <h3 className="font-title-md text-title-md flex items-center gap-sm">
+            <span className="material-symbols-outlined text-primary">dynamic_feed</span>
+            Active Season Selection
+          </h3>
+          <p className="text-[12px] text-on-surface-variant italic">S1 players get S2/S3 priority status</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
+          {[
+            { sNum: 1, label: "Season 1", status: season === 1 ? "Active" : "Completed", vol: "Vol x1.0 • Lower prizes", desc: "Current Phase" },
+            { sNum: 2, label: "Season 2", status: season === 2 ? "Active" : "Upcoming", vol: "Vol x1.5 • Bigger prizes", desc: "More volatile shares" },
+            { sNum: 3, label: "Season 3", status: season === 3 ? "Active" : "Finale", vol: "Vol x2.5 • Max $5,250 for Champion", desc: "Max Prizes" }
+          ].map(({ sNum, label, status, vol, desc }) => {
+            const isSelected = season === sNum;
+            return (
+              <button
+                key={sNum}
+                onClick={() => setSeason(sNum)}
+                className={`relative glass-card p-lg rounded-xl text-left transition-all group overflow-hidden ${
+                  isSelected ? "border-2 border-primary" : "hover:border-primary/50"
+                }`}
+              >
+                {isSelected && (
+                  <div className="absolute top-0 right-0 p-sm text-primary">
+                    <span className="material-symbols-outlined text-body-md" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  </div>
+                )}
+                <div className={`font-label-sm mb-xs uppercase font-bold tracking-widest ${isSelected ? "text-primary" : "text-on-surface-variant"}`}>
+                  {status}
+                </div>
+                <div className="font-headline-lg-mobile text-headline-lg-mobile mb-xs text-on-surface">{label}</div>
+                <div className="text-[12px] text-on-surface-variant">{vol}</div>
+                {isSelected && (
+                  <div className="mt-md flex items-center gap-xs text-primary font-bold">
+                    <span>{desc}</span>
+                    <span className="material-symbols-outlined text-body-md">arrow_forward</span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* How it Works: Bento Grid Layout */}
+      <section className="mb-xl">
+        <header className="flex items-center gap-md mb-lg">
+          <div className="h-8 w-1 bg-primary rounded-full"></div>
+          <h3 className="font-headline-lg text-headline-lg">How the 3-Season League Works</h3>
+        </header>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+          {/* Season 1 Card */}
+          <div className="md:col-span-4 glass-card p-lg rounded-xl border-l-4 border-l-primary group relative hover:translate-y-[-4px] transition-all duration-300">
+            <div className="flex items-center justify-between mb-lg">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-[32px]">looks_one</span>
+              </div>
+              <span className="font-label-sm px-md py-xs bg-primary/20 text-primary rounded-full font-bold">Weeks 1–8</span>
+            </div>
+            <h4 className="font-title-md text-title-md text-on-surface mb-md">SEASON 1 (vol x1.0)</h4>
+            <ul className="space-y-sm font-body-md text-on-surface-variant text-sm">
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-primary text-[18px] mt-1">check_circle</span>
+                <span>Prizes: 1st <span className="text-on-surface font-bold">$750</span> • 2nd $350 • 3rd $150</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-primary text-[18px] mt-1">check_circle</span>
+                <span>Shares: $35 (unranked) → $150 (#1)</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-secondary text-[18px] mt-1">vpn_key</span>
+                <span className="italic text-secondary">S1 alumni get FIRST PICK for S2 & S3</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-primary text-[18px] mt-1">loyalty</span>
+                <span>1st place = FREE S3 entry</span>
+              </li>
+            </ul>
+          </div>
+          {/* Season 2 Card */}
+          <div className="md:col-span-4 glass-card p-lg rounded-xl border-l-4 border-l-secondary group relative hover:translate-y-[-4px] transition-all duration-300">
+            <div className="flex items-center justify-between mb-lg">
+              <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                <span className="material-symbols-outlined text-[32px]">looks_two</span>
+              </div>
+              <span className="font-label-sm px-md py-xs bg-secondary/20 text-secondary rounded-full font-bold">Weeks 9–16</span>
+            </div>
+            <h4 className="font-title-md text-title-md text-on-surface mb-md">SEASON 2 (vol x1.5)</h4>
+            <ul className="space-y-sm font-body-md text-on-surface-variant text-sm">
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-secondary text-[18px] mt-1">trending_up</span>
+                <span>Bigger prizes: 1st <span className="text-on-surface font-bold">$1,500</span> • 2nd $700</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-secondary text-[18px] mt-1">check_circle</span>
+                <span>S1 alumni get registration priority</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-primary text-[18px] mt-1">analytics</span>
+                <span>MORE volatile shares — bigger swings</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-secondary text-[18px] mt-1">loyalty</span>
+                <span>2nd = $100 S3 entry credit</span>
+              </li>
+            </ul>
+          </div>
+          {/* Season 3 Card */}
+          <div className="md:col-span-4 glass-card p-lg rounded-xl border-l-4 border-l-tertiary group relative hover:translate-y-[-4px] transition-all duration-300">
+            <div className="flex items-center justify-between mb-lg">
+              <div className="w-12 h-12 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+                <span className="material-symbols-outlined text-[32px]">emoji_events</span>
+              </div>
+              <span className="font-label-sm px-md py-xs bg-tertiary/20 text-tertiary rounded-full font-bold">Playoff Phase</span>
+            </div>
+            <h4 className="font-title-md text-title-md text-on-surface mb-md">SEASON 3 (vol x2.5)</h4>
+            <ul className="space-y-sm font-body-md text-on-surface-variant text-sm">
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-tertiary text-[18px] mt-1">stars</span>
+                <span>Max <span className="text-tertiary font-bold">$5,250</span> for S3 champion</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-tertiary text-[18px] mt-1">military_tech</span>
+                <span>Elite bracket only - Top performers</span>
+              </li>
+              <li className="flex items-start gap-xs">
+                <span className="material-symbols-outlined text-on-surface-variant text-[18px] mt-1">info</span>
+                <span>Final leaderboard payout event</span>
+              </li>
+            </ul>
+          </div>
+          {/* Banner/Summary */}
+          <div className="md:col-span-12 bg-surface-container-high rounded-xl p-lg flex flex-col sm:flex-row items-start sm:items-center justify-between border border-outline-variant gap-md">
+            <div className="flex items-center gap-lg">
+              <span className="material-symbols-outlined text-secondary text-[40px]">lightbulb</span>
+              <div>
+                <p className="font-title-md text-on-surface">The Multi-Payday Strategy</p>
+                <p className="text-body-md text-on-surface-variant text-sm">A player can win S1, S2, and S3 prizes — three paydays total.</p>
+              </div>
+            </div>
+            <button onClick={() => setTab("playerboard")} className="px-xl py-md bg-secondary text-on-secondary rounded-lg font-bold hover:scale-[1.02] transition-all whitespace-nowrap">
+              Go to Player View
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Ladder Preview Section */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+        <div className="lg:col-span-8 glass-card rounded-xl overflow-hidden border border-outline-variant">
+          <div className="p-lg border-b border-outline-variant flex justify-between items-center bg-surface-container/50">
+            <h3 className="font-title-md">Current Season Rankings (Top 5)</h3>
+            <div className="flex gap-sm">
+              <button onClick={() => setTab("standings")} className="p-sm rounded bg-surface-container-high text-primary hover:opacity-90">
+                <span className="material-symbols-outlined">filter_list</span> View Full Standings
+              </button>
             </div>
           </div>
-          <div style={{ background:C.dimBg, borderRadius:8, padding:14, border:`1px solid ${C.purple}` }}>
-            <div style={{ fontSize:13, fontWeight:900, color:C.purple, marginBottom:8 }}>📅 SEASON 2 — Weeks 9–16 (vol ×1.5)</div>
-            <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>
-              • Bigger prizes: 1st $1,500 · 2nd $700 · 3rd $300<br/>
-              • S1 alumni get first registration choice<br/>
-              • MORE volatile shares — bigger swings<br/>
-              • 1st place = FREE S3 entry · 2nd = $100 S3 entry
+          <div className="overflow-x-auto">
+            {standings.length === 0 ? (
+              <div className="p-xl text-center text-on-surface-variant">No players in this season yet.</div>
+            ) : (
+              <table className="w-full text-left font-body-md text-sm">
+                <thead className="bg-surface-container-lowest text-on-surface-variant uppercase text-[10px] tracking-widest">
+                  <tr>
+                    <th className="px-lg py-md">Rank</th>
+                    <th className="px-lg py-md">Player</th>
+                    <th className="px-lg py-md">Points</th>
+                    <th className="px-lg py-md">Share Price</th>
+                    <th className="px-lg py-md text-right">Wins/Losses</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant">
+                  {standings.slice(0, 5).map((p, idx) => {
+                    const price = getSharePrice(p.name, standings, players);
+                    const isTop1 = idx === 0;
+                    const isTop2 = idx === 1;
+                    const isTop3 = idx === 2;
+                    return (
+                      <tr key={p.name} className="hover:bg-surface-container-high transition-colors">
+                        <td className={`px-lg py-md font-bold ${isTop1 ? "text-secondary" : isTop2 ? "text-on-surface" : isTop3 ? "text-tertiary" : "text-on-surface-variant"}`}>
+                          #{idx + 1}
+                        </td>
+                        <td className="px-lg py-md flex items-center gap-md font-bold text-on-surface">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[12px] ${
+                            isTop1 ? "bg-secondary-container/20 text-secondary" : isTop2 ? "bg-primary-container/20 text-primary" : "bg-tertiary-container/20 text-tertiary"
+                          }`}>
+                            {p.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <span>{p.name}</span>
+                        </td>
+                        <td className="px-lg py-md">{p.pts}</td>
+                        <td className="px-lg py-md text-secondary font-bold">{$$ (price)}</td>
+                        <td className="px-lg py-md text-right text-on-surface-variant">
+                          <span className="text-green-400 font-bold">{p.w}W</span> / <span className="text-red-400 font-bold">{p.l}L</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        <div className="lg:col-span-4 flex flex-col gap-gutter">
+          <div className="glass-card p-lg rounded-xl border border-outline-variant flex-1 flex flex-col">
+            <h4 className="font-title-md mb-md flex items-center gap-sm">
+              <span className="material-symbols-outlined text-secondary">trending_up</span> Market Volatility
+            </h4>
+            <div className="w-full h-40 flex items-end gap-sm px-md py-sm flex-1 mt-auto">
+              <div className="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[40%] rounded-t-sm" title="Week 1"></div>
+              <div className="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[55%] rounded-t-sm" title="Week 2"></div>
+              <div className="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[35%] rounded-t-sm" title="Week 3"></div>
+              <div className="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[70%] rounded-t-sm" title="Week 4"></div>
+              <div className="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[90%] rounded-t-sm" title="Week 5"></div>
+              <div className="flex-1 bg-primary hover:bg-primary transition-colors h-[65%] rounded-t-sm" title="Current"></div>
+            </div>
+            <p className="font-label-sm text-on-surface-variant mt-md text-xs">
+              Volatility index is up for Season {season}. Volatility multiplier is set to {season === 1 ? "1.0x" : season === 2 ? "1.5x" : "2.5x"}. Expect larger share price shifts.
+            </p>
+          </div>
+
+          <div className="bg-primary-container text-on-primary-container p-lg rounded-xl shadow-lg relative overflow-hidden group">
+            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-700">
+              <span className="material-symbols-outlined text-[120px]">sports_golf</span>
+            </div>
+            <h4 className="font-title-md mb-xs">Dashboard Actions</h4>
+            <p className="font-label-sm opacity-80 mb-lg uppercase tracking-widest text-xs">Quick shortcuts</p>
+            <div className="flex flex-col gap-xs">
+              <button onClick={() => setTab("players")} className="w-full py-sm bg-on-primary-container text-primary-container font-bold rounded-lg hover:brightness-125 transition-all text-xs flex items-center justify-center gap-xs">
+                <span className="material-symbols-outlined text-[16px]">person_add</span> Register Players
+              </button>
+              <button onClick={() => setTab("matches")} className="w-full py-sm bg-on-primary-container text-primary-container font-bold rounded-lg hover:brightness-125 transition-all text-xs flex items-center justify-center gap-xs">
+                <span className="material-symbols-outlined text-[16px]">sports_billiards</span> Record Matches
+              </button>
             </div>
           </div>
         </div>
-        <div style={{ marginTop:12, background:"#001a10", borderRadius:8, padding:"12px 16px", fontSize:13, color:C.green }}>
-          💡 A player can win <strong>S1 + S2 + S3 prizes</strong> — three paydays total · S3 is the playoff season (vol ×2.5) · Max = $5,250 for S3 champion
-        </div>
-      </Card>
-      <Card title="How Shares Work — Like a Stock" icon="📈" borderColor={C.gold}>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:12 }}>
-          {[["⚪ Unranked","$35",C.gray],["🔵 Top 8","$60",C.blue],["🟡 Top 4","$90",C.gold],["🟠 #2","$120","#ff6b35"],["🔴 #1","$150",C.red]].map(([l,v,c])=>(
-            <div key={l} style={{ background:C.dimBg, borderRadius:8, padding:"10px 8px", textAlign:"center", border:`1px solid ${c}` }}>
-              <div style={{ fontSize:11, color:C.gray }}>{l}</div>
-              <div style={{ fontSize:18, fontWeight:900, color:c }}>{v}/share</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize:13, color:C.gray, lineHeight:1.8 }}>
-          ✅ <strong style={{ color:C.white }}>Buy in</strong> at whatever the player is ranked right now — that price is locked as your cost.<br/>
-          📈 <strong style={{ color:C.green }}>Hold</strong> and if the player climbs, your shares are worth more at cash-out.<br/>
-          💵 <strong style={{ color:C.gold }}>Cash out</strong> at end of Season 1 at the current market price — or hold for Season 2 playoffs.<br/>
-          🏆 <strong style={{ color:C.red }}>Final cash-out</strong> is mandatory at end of Season 2 playoffs. Champion backers earn $100/share.
-        </div>
-        <div style={{ marginTop:10, background:"#0a0a20", border:`1px solid ${C.blue}`, borderRadius:8, padding:"10px 14px", fontSize:13, color:C.blue }}>
-          Example: Buy 5 shares at $30 when player is unranked = <strong>$150 in</strong>. Player wins championship → <strong>$1,000 back</strong>. That's a 4× return.
-        </div>
-      </Card>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:20 }}>
-        <BigCard icon="💵" title="Total revenue (both seasons)" value={$$(money.totalBase)} color={C.green} onClick={() => setTab("money")} />
-        <BigCard icon="📈" title="Your net profit" value={$$(money.netProfit)} color={C.red} onClick={() => setTab("money")} sub="tap for full breakdown" />
-        <BigCard icon="🤝" title="Per partner ÷4" value={$$(money.perPartner)} color={C.gold} onClick={() => setTab("money")} />
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        {[
-          { tab:"players",     icon:"👤", label:"Add Players",        desc:"Register all 16 players" },
-          { tab:"matches",     icon:"🎱", label:"Enter Matches",       desc:"Record weekly scores" },
-          { tab:"shares",      icon:"💰", label:"Manage Shares",       desc:"Buy ins, hold, cash out" },
-          { tab:"pnl",         icon:"📋", label:"Full P&L — Everyone", desc:"Players, supporters, operators, bar" },
-        ].map(item => (
-          <div key={item.tab} onClick={() => setTab(item.tab)} style={{ background:C.card, border:`1px solid ${C.cardBorder}`, borderRadius:10, padding:"14px 16px", cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
-            <span style={{ fontSize:24 }}>{item.icon}</span>
-            <div>
-              <div style={{ fontWeight:700, fontSize:14 }}>{item.label}</div>
-              <div style={{ fontSize:12, color:C.gray }}>{item.desc}</div>
-            </div>
-            <span style={{ marginLeft:"auto", color:C.gray }}>›</span>
-          </div>
-        ))}
-      </div>
+      </section>
     </div>
   );
 }

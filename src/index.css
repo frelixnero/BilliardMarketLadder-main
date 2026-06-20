@@ -1,35 +1,41 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
 }
 
-body {
-  background: #0e0e1a;
+.glass-card {
+  background: rgba(30, 27, 75, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid #312E81;
 }
 
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
+.gold-glow {
+  text-shadow: 0 0 10px rgba(255, 185, 95, 0.3);
 }
 
-input[type=number] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0e0e1a;
+  background: #0b1326;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2a2a45;
-  border-radius: 3px;
+  background: #2d3449;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #494454;
 }
 
 /* Auth Screen Custom Styles */
@@ -47,14 +53,14 @@ input[type=number] {
 }
 
 .auth-input:focus {
-  border-color: #f5c842; /* C.gold */
-  box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.15);
+  border-color: #ffb95f; /* Accent gold from Stitch */
+  box-shadow: 0 0 0 2px rgba(255, 185, 95, 0.15);
 }
 
 .auth-button-role {
-  background: #12121f;
-  border: 1px solid #2a2a45;
-  color: #8888aa;
+  background: #131b2e;
+  border: 1px solid #2d3449;
+  color: #cbc3d7;
   border-radius: 6px;
   padding: 12px;
   cursor: pointer;
@@ -65,22 +71,22 @@ input[type=number] {
 }
 
 .auth-button-role.active {
-  background: #e94560; /* C.red */
-  border-color: #e94560;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.35);
+  background: #a078ff; /* primary-container */
+  border-color: #d0bcff;
+  color: #3c0091;
+  box-shadow: 0 4px 12px rgba(160, 120, 255, 0.35);
 }
 
 .auth-button-role:hover:not(.active) {
-  border-color: #8888aa;
-  color: #ffffff;
+  border-color: #958ea0;
+  color: #dae2fd;
 }
 
 .auth-tab-btn {
   flex: 1;
   background: transparent;
   border: none;
-  color: #8888aa;
+  color: #cbc3d7;
   padding: 10px 0;
   cursor: pointer;
   font-family: inherit;
@@ -92,7 +98,7 @@ input[type=number] {
 .auth-tab-btn.active {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  color: #f0f0ff;
+  color: #dae2fd;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -101,8 +107,8 @@ input[type=number] {
   border: none;
   border-radius: 8px;
   padding: 14px;
-  background: #e94560; /* C.red */
-  color: #ffffff;
+  background: #a078ff; /* primary-container */
+  color: #340080;
   font-weight: 800;
   cursor: pointer;
   font-family: inherit;
@@ -110,12 +116,12 @@ input[type=number] {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   transition: all 0.2s;
-  box-shadow: 0 4px 16px rgba(233, 69, 96, 0.25);
+  box-shadow: 0 4px 16px rgba(160, 120, 255, 0.25);
 }
 
 .auth-submit-btn:hover {
-  background: #f05a74;
-  box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+  background: #b18fff;
+  box-shadow: 0 6px 20px rgba(160, 120, 255, 0.4);
 }
 
 .auth-submit-btn:active {
@@ -123,9 +129,8 @@ input[type=number] {
 }
 
 .auth-submit-btn:disabled {
-  background: #2a2a45;
-  color: #8888aa;
+  background: #2d3449;
+  color: #cbc3d7;
   cursor: not-allowed;
   box-shadow: none;
 }
-
