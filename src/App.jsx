@@ -1087,11 +1087,21 @@ function App({ authUser, supabaseClient, onLogout }) {
   ];
   const TABS = effectiveRole === "player" ? playerTabs : operatorTabs;
 
+  const prevRoleRef = React.useRef(effectiveRole);
+  useEffect(() => {
+    if (prevRoleRef.current === "player" && effectiveRole === "operator") {
+      setTab("home");
+    } else if (prevRoleRef.current === "operator" && effectiveRole === "player") {
+      setTab("playerboard");
+    }
+    prevRoleRef.current = effectiveRole;
+  }, [effectiveRole]);
+
   useEffect(() => {
     if (!TABS.some(t => t.id === tab)) {
       setTab(effectiveRole === "player" ? "playerboard" : "home");
     }
-  }, [effectiveRole, tab]);
+  }, [effectiveRole, tab, TABS]);
   const views = {
     players, setPlayers, matches, setMatches,
     supporters, setSupporters,
@@ -1134,16 +1144,16 @@ function App({ authUser, supabaseClient, onLogout }) {
               <button
                 key={t.id}
                 onClick={() => { setTab(t.id); setMobileMenuOpen(false); }}
-                className={`flex items-center gap-md px-md py-sm rounded-xl font-medium transition-all text-left ${
+                className={`flex items-center gap-md px-md py-sm rounded-xl font-medium transition-all text-left w-full overflow-hidden ${
                   isActive
                     ? "text-on-primary-container bg-primary-container font-bold shadow-md shadow-primary-container/20"
                     : "text-on-surface-variant hover:bg-surface-container-high"
                 }`}
               >
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: `'FILL' ${isActive ? 1 : 0}` }}>
+                <span className="material-symbols-outlined flex-shrink-0 w-6 text-center overflow-hidden text-[24px]" style={{ fontVariationSettings: `'FILL' ${isActive ? 1 : 0}` }}>
                   {getMaterialIcon(t.id)}
                 </span>
-                <span className="font-title-md text-title-md">{t.label}</span>
+                <span className="font-title-md text-title-md truncate">{t.label}</span>
               </button>
             );
           })}
