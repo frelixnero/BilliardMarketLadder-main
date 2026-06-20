@@ -68,6 +68,232 @@ const getSupabaseClient = () => {
   if (!BML_SUPABASE_URL || !BML_SUPABASE_ANON_KEY) return null;
   return createClient(BML_SUPABASE_URL, BML_SUPABASE_ANON_KEY);
 };
+// ─── SVG ICONS ────────────────────────────────────────────────────────────────
+const getIconSvg = (key, color = "#8888aa", size = 18) => {
+  const norm = String(key || "").trim().toLowerCase();
+  
+  let type = norm;
+  if (norm === "🏠" || norm === "home") type = "home";
+  else if (norm === "💵" || norm === "payouts" || norm === "revenue in" || norm === "revenue") type = "payouts";
+  else if (norm === "💸" || norm === "costs out" || norm === "costs" || norm === "cost") type = "costs";
+  else if (norm === "👤" || norm === "players" || norm === "player") type = "players";
+  else if (norm === "🎱" || norm === "matches" || norm === "participation" || norm === "singles") type = "matches";
+  else if (norm === "🏟" || norm === "inhouse" || norm === "leagues" || norm === "league") type = "inhouse";
+  else if (norm === "🏆" || norm === "standings" || norm === "prize" || norm === "prizes" || norm === "prizes out" || norm === "prize by season") type = "standings";
+  else if (norm === "💰" || norm === "shares" || norm === "share fee" || norm === "total invested" || norm === "invested") type = "shares";
+  else if (norm === "📈" || norm === "value" || norm === "gain" || norm === "profit" || norm === "ledger" || norm === "net profit" || norm === "current market value" || norm === "your net profit" || norm === "total gain/loss" || norm === "share ledger") type = "trend-up";
+  else if (norm === "🤝" || norm === "partner" || norm === "partners" || norm === "per partner") type = "handshake";
+  else if (norm === "🧾" || norm === "backers" || norm === "receipt" || norm === "receipts" || norm === "backers tracked") type = "receipt";
+  else if (norm === "🏪" || norm === "bars" || norm === "bar") type = "bars";
+  else if (norm === "📖" || norm === "rules" || norm === "official game rules" || norm === "manual view") type = "rules";
+  else if (norm === "📗" || norm === "manual" || norm === "guide" || norm === "operator manual") type = "manual";
+  else if (norm === "📊" || norm === "money" || norm === "breakdown" || norm === "players in profit") type = "money";
+  else if (norm === "📋" || norm === "pnl" || norm === "how it works" || norm === "how the 3-season league works") type = "pnl";
+  else if (norm === "📺" || norm === "playerboard" || norm === "player view") type = "playerboard";
+  else if (norm === "⚡") type = "logo";
+  else if (norm === "⚙️" || norm === "gear" || norm === "settings") type = "settings";
+  else if (norm === "💡" || norm === "tip") type = "tip";
+  else if (norm === "💳" || norm === "registration" || norm === "registration fees") type = "credit-card";
+  else if (norm === "👥" || norm === "teams" || norm === "team" || norm === "team leagues") type = "teams";
+  else if (norm === "🥊" || norm === "playoffs" || norm === "playoffs — after season 2") type = "playoffs-bracket";
+  
+  switch (type) {
+    case "home":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      );
+    case "payouts":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      );
+    case "costs":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          <line x1="3" y1="3" x2="21" y2="21"/>
+        </svg>
+      );
+    case "players":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      );
+    case "matches":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <circle cx="12" cy="12" r="4" fill={color}/>
+          <line x1="3" y1="21" x2="9" y2="15"/>
+          <line x1="21" y1="21" x2="15" y2="15"/>
+          <line x1="18" y1="6" x2="21" y2="3"/>
+          <line x1="6" y1="6" x2="3" y2="3"/>
+        </svg>
+      );
+    case "inhouse":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      );
+    case "standings":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+          <path d="M4 22h16"/>
+          <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"/>
+          <path d="M12 2a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4 4 4 0 0 1-4-4V6a4 4 0 0 1 4-4z"/>
+        </svg>
+      );
+    case "shares":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <circle cx="8" cy="8" r="6"/>
+          <circle cx="18" cy="18" r="4"/>
+          <line x1="8" y1="14" x2="14" y2="18"/>
+        </svg>
+      );
+    case "trend-up":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+          <polyline points="16 7 22 7 22 13"/>
+        </svg>
+      );
+    case "handshake":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+          <circle cx="19" cy="8" r="2"/>
+        </svg>
+      );
+    case "receipt":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
+          <path d="M16 8H8"/>
+          <path d="M16 12H8"/>
+          <path d="M15 16H8"/>
+        </svg>
+      );
+    case "bars":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M6 3h12l1 6H5l1-6z"/>
+          <path d="M5 9v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/>
+          <path d="M9 13v4"/>
+          <path d="M15 13v4"/>
+        </svg>
+      );
+    case "rules":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+          <path d="M6 6h10"/>
+          <path d="M6 10h10"/>
+        </svg>
+      );
+    case "manual":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <line x1="10" y1="9" x2="8" y2="9"/>
+        </svg>
+      );
+    case "participation":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      );
+    case "money":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <rect x="2" y="5" width="20" height="14" rx="2"/>
+          <line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+      );
+    case "pnl":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+          <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+        </svg>
+      );
+    case "playerboard":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+      );
+    case "logo":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <circle cx="12" cy="12" r="10" fill="rgba(255, 215, 0, 0.05)"/>
+          <circle cx="12" cy="12" r="4" fill="none" stroke={color} strokeWidth="1.5"/>
+          <text x="12" y="15" fontSize="8" fontWeight="950" fontFamily="system-ui, sans-serif" fill={color} textAnchor="middle">8</text>
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      );
+    case "tip":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .3 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+          <line x1="9" y1="18" x2="15" y2="18"/>
+          <line x1="10" y1="22" x2="14" y2="22"/>
+        </svg>
+      );
+    case "credit-card":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+          <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+      );
+    case "playoffs-bracket":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M3 5h4v6H3"/>
+          <path d="M3 13h4v6H3"/>
+          <path d="M7 8h5v8H7"/>
+          <path d="M12 12h9"/>
+        </svg>
+      );
+    case "teams":
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      );
+    default:
+      return <span style={{ fontSize: size, verticalAlign: "middle" }}>{key}</span>;
+  }
+};
 // ─── COLORS ───────────────────────────────────────────────────────────────────
 const C = {
   bg: "#0e0e1a", card: "#16162a", cardBorder: "#2a2a45",
@@ -856,7 +1082,7 @@ function App({ authUser, supabaseClient, onLogout }) {
   return (
     <div style={{ fontFamily:"'Segoe UI',Arial,sans-serif", background:C.bg, minHeight:"100vh", color:C.white }}>
       <div style={{ background:C.card, borderBottom:`3px solid ${C.red}`, padding:"12px 20px", display:"flex", alignItems:"center", gap:12 }}>
-        <span style={{ fontSize:28 }}>⚡</span>
+        <span style={{ display: "inline-flex", alignItems: "center" }}>{getIconSvg("⚡", C.gold, 32)}</span>
         <div>
           <div style={{ fontSize:11, color:C.red, fontWeight:800, letterSpacing:3, textTransform:"uppercase" }}>Action Ladder</div>
           <div style={{ fontSize:20, fontWeight:900, color:C.white, lineHeight:1 }}>BilliardsMarketLadder</div>
@@ -911,9 +1137,9 @@ function App({ authUser, supabaseClient, onLogout }) {
             color:tab===t.id ? C.white : C.gray,
             padding:"10px 14px", cursor:"pointer", fontFamily:"inherit",
             fontSize:11, fontWeight:tab===t.id?700:400,
-            display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+            display:"flex", flexDirection:"column", alignItems:"center", gap:4,
           }}>
-            <span style={{ fontSize:17 }}>{t.icon}</span>
+            <span style={{ display:"inline-flex", alignItems:"center", minHeight: 20 }}>{getIconSvg(t.id, tab===t.id ? C.red : C.gray, 18)}</span>
             <span>{t.label}</span>
           </button>
         ))}
@@ -1534,7 +1760,7 @@ function TeamsView({ doublesTeams, setDoublesTeams, triplesTeams, setTriplesTeam
 function BigCard({ icon, title, value, sub, color, onClick }) {
   return (
     <div onClick={onClick} style={{ background:C.card, border:`1px solid ${C.cardBorder}`, borderTop:`4px solid ${color||C.green}`, borderRadius:12, padding:18, cursor:onClick?"pointer":"default" }}>
-      <div style={{ fontSize:26, marginBottom:4 }}>{icon}</div>
+      <div style={{ fontSize:26, marginBottom:4, display:"flex", alignItems:"center", minHeight:28 }}>{getIconSvg(icon, color||C.green, 24)}</div>
       <div style={{ fontSize:11, color:C.gray, textTransform:"uppercase", letterSpacing:1, marginBottom:2 }}>{title}</div>
       <div style={{ fontSize:24, fontWeight:900, color:color||C.green }}>{value}</div>
       {sub && <div style={{ fontSize:11, color:C.gray, marginTop:3 }}>{sub}</div>}
@@ -1545,8 +1771,8 @@ function Card({ children, title, icon, borderColor }) {
   return (
     <div style={{ background:C.card, border:`1px solid ${borderColor||C.cardBorder}`, borderRadius:10, overflow:"hidden", marginBottom:16 }}>
       {title && (
-        <div style={{ background:C.dimBg, padding:"10px 16px", fontSize:13, fontWeight:700, borderBottom:`1px solid ${borderColor||C.cardBorder}` }}>
-          {icon && <span style={{ marginRight:6 }}>{icon}</span>}{title}
+        <div style={{ background:C.dimBg, padding:"10px 16px", fontSize:13, fontWeight:700, borderBottom:`1px solid ${borderColor||C.cardBorder}`, display:"flex", alignItems:"center", gap:8 }}>
+          {icon && <span style={{ display:"inline-flex", alignItems:"center" }}>{getIconSvg(icon, borderColor||C.gray, 15)}</span>}{title}
         </div>
       )}
       <div style={{ padding:16 }}>{children}</div>
@@ -1556,15 +1782,19 @@ function Card({ children, title, icon, borderColor }) {
 function PageTitle({ icon, title, desc }) {
   return (
     <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:26, fontWeight:900 }}>{icon} {title}</div>
-      {desc && <div style={{ color:C.gray, fontSize:14, marginTop:4 }}>{desc}</div>}
+      <div style={{ fontSize:26, fontWeight:900, display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ display:"inline-flex", alignItems:"center" }}>{getIconSvg(icon, C.gold, 26)}</span>
+        <span>{title}</span>
+      </div>
+      {desc && <div style={{ color:C.gray, fontSize:14, marginTop:6 }}>{desc}</div>}
     </div>
   );
 }
 function Tip({ children, color }) {
   return (
-    <div style={{ background: color ? color+"22" : "#1a1a35", border:`1px solid ${color||"#3333aa"}`, borderRadius:8, padding:"10px 14px", fontSize:13, color:color||"#9999ee", marginBottom:16, display:"flex", gap:8 }}>
-      <span>💡</span><span>{children}</span>
+    <div style={{ background: color ? color+"22" : "#1a1a35", border:`1px solid ${color||"#3333aa"}`, borderRadius:8, padding:"10px 14px", fontSize:13, color:color||"#9999ee", marginBottom:16, display:"flex", gap:10, alignItems:"center" }}>
+      <span style={{ display:"inline-flex", alignItems:"center" }}>{getIconSvg("💡", color||"#9999ee", 16)}</span>
+      <span>{children}</span>
     </div>
   );
 }
